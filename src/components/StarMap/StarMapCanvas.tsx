@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Planet, Troop, FactionId, MapState, TroopClass, PlayerCharacter } from "@/types/sss";
+import { Planet, Troop, FactionId, MapState, TroopClass, PlayerCharacter, ResourceLevel } from "@/types/sss";
 import { getFaction } from "@/lib/factions";
 import { FACTION_INITIAL_MILITARY_TIERS } from "@/lib/resources";
-import { AlertTriangle, X, Dices, Settings, Sparkles, Wand2, Move, Compass, Orbit, Sliders, Eye } from "lucide-react";
+import { AlertTriangle, X, Dices, Settings, Sparkles, Wand2, Move, Compass, Orbit, Sliders, Eye, Plus } from "lucide-react";
 import { MapControls, MapTool, TROOP_CLASSES } from "./MapControls";
 import { EntityModal } from "./EntityModal";
 import {
@@ -24,6 +24,7 @@ import {
   getPointOnCircularOrbit,
   calibrateAnomalousOrbitToPlanet,
   generateAnomalousOrbit,
+  ALL_PLANET_RESOURCES,
 } from "@/lib/planetForge";
 
 interface StarMapCanvasProps {
@@ -100,13 +101,26 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   const [selectedEntityType, setSelectedEntityType] = useState<"planet" | "troop">("planet");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Planet Inspector popup
+  // Planet Inspector popup & resource quick-editor state
   const [inspectedPlanet, setInspectedPlanet] = useState<Planet | null>(null);
+  const [isAddingResourceInInspector, setIsAddingResourceInInspector] = useState(false);
+  const [newResourceName, setNewResourceName] = useState<string>(ALL_PLANET_RESOURCES[0]);
 
   // Drag & Drop / Translocation State for Planets (GM)
   const [localPlanets, setLocalPlanets] = useState<Planet[]>(mapState.planets || []);
   const [isTranslocatingPlanetId, setIsTranslocatingPlanetId] = useState<string | null>(null);
   const [translocationMode, setTranslocationMode] = useState<"orbit" | "free">("orbit");
+
+  // Consolidated MapState builder to prevent stale prop overwrites between planets and troops
+  const buildFullMapState = useCallback(
+    (planetsOverride?: Planet[], troopsOverride?: Troop[]): MapState => ({
+      ...mapState,
+      planets: planetsOverride ?? localPlanets,
+      troops: troopsOverride ?? localTroops,
+      updatedAt: Date.now(),
+    }),
+    [mapState, localPlanets, localTroops]
+  );
   const [draggingPlanet, setDraggingPlanet] = useState<{
     id: string;
     startX: number;
@@ -183,6 +197,23 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   const troopQuotas = useMemo<
     Record<TroopClass, { placed: number; max: number; available: number }>
   >(() => {
+    if (isGM && targetFactionId === "neutral") {
+      const inf = (cls: TroopClass) => ({
+        placed: localTroops.filter(
+          (t) => t.factionId === "neutral" && t.troopClass === cls
+        ).length,
+        max: 9999,
+        available: 9999,
+      });
+      return {
+        light_infantry: inf("light_infantry"),
+        heavy_infantry: inf("heavy_infantry"),
+        light_vehicle: inf("light_vehicle"),
+        heavy_vehicle: inf("heavy_vehicle"),
+        elite: inf("elite"),
+      };
+    }
+
     const calc = (
       cls: TroopClass,
       tierKey:
@@ -210,7 +241,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       heavy_vehicle: calc("heavy_vehicle", "heavyVehicles"),
       elite: calc("elite", "eliteUnits"),
     };
-  }, [localTroops, targetFactionId, targetChar, initialMilitary]);
+  }, [localTroops, targetFactionId, targetChar, initialMilitary, isGM]);
 
   // Center pan on initial mount
   useEffect(() => {
@@ -325,25 +356,28 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
     const { wx, wy } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
 
     if (activeTool === "add_troop") {
+      const targetFactionId = isGM
+        ? selectedFactionForAdd
+        : character?.factionId || "neutral";
+      const isNeutralBypass = isGM && targetFactionId === "neutral";
+
       const quota = troopQuotas[selectedTroopClass];
       const classConfig =
         TROOP_CLASSES.find((c) => c.id === selectedTroopClass) || TROOP_CLASSES[0];
 
-      if (quota.placed >= quota.max) {
+      if (!isNeutralBypass && quota && quota.placed >= quota.max) {
         setQuotaNotice(
           `Limite de mobilização atingido! Sua facção já possui ${quota.placed}/${quota.max} de ${classConfig.label} no mapa. Remova uma unidade existente do mapa para reposicioná-la.`
         );
         return;
       }
 
-      const targetFactionId = isGM
-        ? selectedFactionForAdd
-        : character?.factionId || "neutral";
-      const ownerId =
-        currentUser?.id ||
-        character?.userId ||
-        currentUser?.username ||
-        (isGM ? "dm" : "player");
+      const ownerId = isNeutralBypass
+        ? "neutral"
+        : currentUser?.id ||
+          character?.userId ||
+          currentUser?.username ||
+          (isGM ? "dm" : "player");
 
       let defaultName = `${classConfig.label} ${(localTroops.length + 1)}`;
       if (selectedTroopClass === "elite") {
@@ -355,9 +389,9 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
         selectedTroopClass === "heavy_vehicle" ||
         (selectedTroopClass === "elite" && isAirspace);
 
-      const visibleToList = Array.from(
-        new Set(["dm", ownerId, targetFactionId])
-      );
+      const visibleToList = isNeutralBypass
+        ? ["Todos", "all", "dm", "neutral"]
+        : Array.from(new Set(["dm", ownerId, targetFactionId]));
 
       const newTroop: Troop = {
         id: `trp_${Date.now()}_` + Math.random().toString(36).substring(2, 6),
@@ -377,17 +411,13 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       setLocalTroops(updatedTroops);
       setSelectedTroop(newTroop);
 
-      onUpdateMapState?.({
-        ...mapState,
-        troops: updatedTroops,
-        updatedAt: Date.now(),
-      });
+      onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
     } else if (activeTool === "add_planet" && isGM) {
       const orbitRadius = Math.round(Math.sqrt(wx * wx + wy * wy));
       let initialPhase = Math.round((Math.atan2(wy, wx) * 180) / Math.PI);
       if (initialPhase < 0) initialPhase += 360;
 
-      const stats = generatePlanetStats({ allowRuins: true });
+      const stats = generatePlanetStats({ allowRuins: false });
       const newPlanet: Planet = {
         id: `plt_${Date.now()}_` + Math.random().toString(36).substring(2, 5),
         name: `Planeta-${(localPlanets.length || 0) + 1}`,
@@ -408,11 +438,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
 
       const updatedPlanets = [...localPlanets, newPlanet];
       setLocalPlanets(updatedPlanets);
-      onUpdateMapState?.({
-        ...mapState,
-        planets: updatedPlanets,
-        updatedAt: Date.now(),
-      });
+      onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
 
       setInspectedPlanet(newPlanet);
       setActiveTool("select");
@@ -516,14 +542,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       // Save final coordinates to Firestore / server store ONLY on pointerUp
       const currentFinalTroop = localTroops.find((t) => t.id === troop.id);
       if (currentFinalTroop) {
-        const updatedTroops = (mapState.troops || []).map((t) =>
+        const updatedTroops = localTroops.map((t) =>
           t.id === troop.id ? currentFinalTroop : t
         );
-        onUpdateMapState?.({
-          ...mapState,
-          troops: updatedTroops,
-          updatedAt: Date.now(),
-        });
+        onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
       }
     }
 
@@ -538,11 +560,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
     setLocalTroops(updatedTroops);
     setSelectedTroop(updated);
 
-    onUpdateMapState?.({
-      ...mapState,
-      troops: updatedTroops,
-      updatedAt: Date.now(),
-    });
+    onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
   };
 
   const handleDeleteTroop = (id: string) => {
@@ -550,11 +568,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
     setLocalTroops(updatedTroops);
     setSelectedTroop(null);
 
-    onUpdateMapState?.({
-      ...mapState,
-      troops: updatedTroops,
-      updatedAt: Date.now(),
-    });
+    onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
   };
 
   // Keyboard shortcut: Delete or Backspace removes the currently selected troop
@@ -721,14 +735,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
     if (draggingPlanet.hasMoved || hasMovedPlanetRef.current) {
       const finalPlanet = localPlanets.find((p) => p.id === planet.id);
       if (finalPlanet) {
-        const updatedPlanets = (mapState.planets || []).map((p) =>
+        const updatedPlanets = localPlanets.map((p) =>
           p.id === planet.id ? finalPlanet : p
         );
-        onUpdateMapState?.({
-          ...mapState,
-          planets: updatedPlanets,
-          updatedAt: Date.now(),
-        });
+        onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
       }
     }
 
@@ -768,14 +778,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
     );
     setInspectedPlanet(updatedPlanet);
 
-    const updatedPlanets = (mapState.planets || []).map((p) =>
+    const updatedPlanets = localPlanets.map((p) =>
       p.id === planet.id ? updatedPlanet : p
     );
-    onUpdateMapState?.({
-      ...mapState,
-      planets: updatedPlanets,
-      updatedAt: Date.now(),
-    });
+    onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
   };
 
   const handleStepPlanetPhase = (planet: Planet, step: number) => {
@@ -823,18 +829,18 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
     );
     setInspectedPlanet(updatedPlanet);
 
-    const updatedPlanets = (mapState.planets || []).map((p) =>
+    const updatedPlanets = localPlanets.map((p) =>
       p.id === planet.id ? updatedPlanet : p
     );
-    onUpdateMapState?.({
-      ...mapState,
-      planets: updatedPlanets,
-      updatedAt: Date.now(),
-    });
+    onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
   };
 
   const handleRollPlanetInInspector = (planet: Planet) => {
-    const stats = generatePlanetStats({ allowRuins: true });
+    const currentHasRuins = Boolean(
+      planet.traits &&
+      planet.traits.some((t) => typeof t === "string" && t.trim() === SPECIAL_TRAITS.PRECURSOR_RUINS)
+    );
+    const stats = generatePlanetStats({ allowRuins: currentHasRuins });
     const updatedPlanet: Planet = {
       ...planet,
       size: stats.size,
@@ -849,14 +855,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
     setLocalPlanets((prev) =>
       prev.map((p) => (p.id === planet.id ? updatedPlanet : p))
     );
-    const updatedPlanets = (mapState.planets || []).map((p) =>
+    const updatedPlanets = localPlanets.map((p) =>
       p.id === planet.id ? updatedPlanet : p
     );
-    onUpdateMapState?.({
-      ...mapState,
-      planets: updatedPlanets,
-      updatedAt: Date.now(),
-    });
+    onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
   };
 
   const handleUpdatePlanetField = (planet: Planet, field: Partial<Planet>) => {
@@ -868,14 +870,40 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
     setLocalPlanets((prev) =>
       prev.map((p) => (p.id === planet.id ? updatedPlanet : p))
     );
-    const updatedPlanets = (mapState.planets || []).map((p) =>
+    const updatedPlanets = localPlanets.map((p) =>
       p.id === planet.id ? updatedPlanet : p
     );
-    onUpdateMapState?.({
-      ...mapState,
-      planets: updatedPlanets,
-      updatedAt: Date.now(),
-    });
+    onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+  };
+
+  const handleCyclePlanetResourceLevel = (planet: Planet, resourceName: string) => {
+    const nextLevels: Record<ResourceLevel, ResourceLevel> = {
+      Baixa: "Média",
+      Média: "Alta",
+      Alta: "Baixa",
+    };
+    const currentResources = planet.resources || [];
+    const updatedResources = currentResources.map((r) =>
+      r.name === resourceName ? { ...r, level: nextLevels[r.level] || "Média" } : r
+    );
+    handleUpdatePlanetField(planet, { resources: updatedResources });
+  };
+
+  const handleRemovePlanetResource = (planet: Planet, resourceName: string) => {
+    const currentResources = planet.resources || [];
+    const updatedResources = currentResources.filter((r) => r.name !== resourceName);
+    handleUpdatePlanetField(planet, { resources: updatedResources });
+  };
+
+  const handleAddPlanetResource = (planet: Planet, resourceName: string) => {
+    const currentResources = planet.resources || [];
+    if (currentResources.some((r) => r.name === resourceName)) return;
+    const updatedResources = [
+      ...currentResources,
+      { name: resourceName, level: "Média" as ResourceLevel },
+    ];
+    handleUpdatePlanetField(planet, { resources: updatedResources });
+    setIsAddingResourceInInspector(false);
   };
 
   const handleSaveModalEntity = (updated: Planet | Troop) => {
@@ -884,14 +912,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       setLocalPlanets((prev) =>
         prev.map((p) => (p.id === updated.id ? updatedPlanet : p))
       );
-      const updatedPlanets = (mapState.planets || []).map((p) =>
+      const updatedPlanets = localPlanets.map((p) =>
         p.id === updated.id ? updatedPlanet : p
       );
-      onUpdateMapState?.({
-        ...mapState,
-        planets: updatedPlanets,
-        updatedAt: Date.now(),
-      });
+      onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
       if (inspectedPlanet?.id === updated.id) {
         setInspectedPlanet(updatedPlanet);
       }
@@ -901,12 +925,8 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   const handleDeleteModalEntity = (id: string, type: "planet" | "troop") => {
     if (type === "planet") {
       setLocalPlanets((prev) => prev.filter((p) => p.id !== id));
-      const filtered = (mapState.planets || []).filter((p) => p.id !== id);
-      onUpdateMapState?.({
-        ...mapState,
-        planets: filtered,
-        updatedAt: Date.now(),
-      });
+      const filtered = localPlanets.filter((p) => p.id !== id);
+      onUpdateMapState?.(buildFullMapState(filtered, undefined));
       if (inspectedPlanet?.id === id) {
         setInspectedPlanet(null);
       }
@@ -925,42 +945,63 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   };
 
   // Fog of War evaluation
-  const isTroopVisible = useCallback((troop: Troop): boolean => {
-    if (isGM) {
-      if (viewAs === "global") return true;
+  const isTroopVisible = useCallback(
+    (troop: Troop): boolean => {
+      if (isGM) {
+        if (viewAs === "global") return true;
 
-      // GM Vision Filter (Fog of War Simulator for a specific faction)
-      // 1. Tropa pertence àquela facção (ownerId === viewAs OU factionId === viewAs)
-      if (troop.factionId === viewAs || troop.ownerId === viewAs) {
+        // GM Vision Filter (Fog of War Simulator for a specific faction)
+        if (troop.factionId === viewAs || troop.ownerId === viewAs) {
+          return true;
+        }
+        const list = (troop.visible_to || ["dm", troop.ownerId || "", troop.factionId]).map((v) =>
+          v.toString()
+        );
+        const hasMatch = list.some(
+          (v) =>
+            v.toLowerCase() === "todos" ||
+            v.toLowerCase() === "all" ||
+            v.toLowerCase() === viewAs.toLowerCase()
+        );
+        return hasMatch;
+      }
+
+      // PLAYER Fog of War Filter
+      const troopOwner = ((troop as any).owner || troop.ownerId || "").toString();
+      const currentUserId = (currentUser?.id || "").toString();
+      const characterUserId = (character?.userId || "").toString();
+      const currentUsername = (currentUser?.username || "").toString().toLowerCase();
+
+      // 1. Renderizar a tropa SE tropa.owner === jogadorAtual.id (ou username / character userId)
+      if (
+        (currentUserId && troopOwner === currentUserId) ||
+        (characterUserId && troopOwner === characterUserId) ||
+        (currentUsername && troopOwner.toLowerCase() === currentUsername)
+      ) {
         return true;
       }
-      // 2. Facção está explicitamente liberada no array de visibilidade
-      const list = troop.visible_to || ["dm", troop.ownerId || "", troop.factionId];
-      if (list.includes("all") || list.includes("todos") || list.includes(viewAs)) {
-        return true;
-      }
+
+      // 2. tropa.visible_to.includes(jogadorAtual.id) OU tropa.visible_to.includes('Todos')
+      const list = (troop.visible_to || ["dm", troopOwner, troop.factionId]).map((v) =>
+        v.toString()
+      );
+
+      const hasEveryone = list.some(
+        (v) => v.toLowerCase() === "todos" || v.toLowerCase() === "all"
+      );
+      if (hasEveryone) return true;
+
+      if (currentUserId && list.includes(currentUserId)) return true;
+      if (characterUserId && list.includes(characterUserId)) return true;
+      if (currentUsername && list.some((v) => v.toLowerCase() === currentUsername)) return true;
+
+      // Also visible if visible to player's faction
+      if (character?.factionId && list.includes(character.factionId)) return true;
+
       return false;
-    }
-
-    const list = troop.visible_to || ["dm", troop.ownerId || "", troop.factionId];
-    if (list.includes("all") || list.includes("todos")) return true;
-
-    if (currentUser?.id && list.includes(currentUser.id)) return true;
-    if (character?.userId && list.includes(character.userId)) return true;
-    if (currentUser?.username && list.includes(currentUser.username.toLowerCase())) return true;
-
-    if (character?.factionId && list.includes(character.factionId)) return true;
-
-    if (troop.ownerId) {
-      if (currentUser?.id && troop.ownerId === currentUser.id) return true;
-      if (character?.userId && troop.ownerId === character.userId) return true;
-      if (currentUser?.username && troop.ownerId === currentUser.username) return true;
-    }
-
-    if (character?.factionId && troop.factionId === character.factionId) return true;
-
-    return false;
-  }, [isGM, viewAs, currentUser, character]);
+    },
+    [isGM, viewAs, currentUser, character]
+  );
 
   // Automatically deselect troop if it becomes hidden by vision filter
   useEffect(() => {
@@ -1250,7 +1291,13 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
             const hasIntelligentLife =
               planet.traits?.includes(SPECIAL_TRAITS.INTELLIGENT_LIFE) ||
               planet.traits?.includes(SPECIAL_TRAITS.ADVANCED_CIVILIZATION);
-            const hasRuins = planet.traits?.includes(SPECIAL_TRAITS.PRECURSOR_RUINS);
+            const hasRuins = Boolean(
+              planet.traits &&
+              Array.isArray(planet.traits) &&
+              planet.traits.some(
+                (t) => typeof t === "string" && t.trim() === SPECIAL_TRAITS.PRECURSOR_RUINS
+              )
+            );
             return (
               <g
                 key={planet.id}
@@ -1873,7 +1920,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
           data-hud="true"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
-          className="hud-element absolute bottom-6 right-6 z-40 bg-[#0C0F17]/95 border border-sky-500/30 backdrop-blur-xl rounded-3xl p-4 sm:p-5 shadow-2xl w-84 sm:w-[420px] max-h-[85vh] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-2 duration-200 cursor-default font-mono text-xs"
+          className="hud-element absolute bottom-6 right-6 z-50 bg-[#0C0F17]/95 border border-sky-500/30 backdrop-blur-xl rounded-3xl p-4 sm:p-5 shadow-2xl w-84 sm:w-[420px] max-h-[85vh] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-2 duration-200 cursor-default font-mono text-xs"
         >
           {/* Top Bar */}
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -2314,14 +2361,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
                         prev.map((p) => (p.id === inspectedPlanet.id ? updated : p))
                       );
                       setInspectedPlanet(updated);
-                      const updatedPlanets = (mapState.planets || []).map((p) =>
+                      const updatedPlanets = localPlanets.map((p) =>
                         p.id === inspectedPlanet.id ? updated : p
                       );
-                      onUpdateMapState?.({
-                        ...mapState,
-                        planets: updatedPlanets,
-                        updatedAt: Date.now(),
-                      });
+                      onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
                     }}
                     className="px-2 py-0.5 rounded-lg bg-amber-500/25 hover:bg-amber-500/40 text-amber-200 border border-amber-400/50 font-bold transition-colors cursor-pointer"
                   >
@@ -2332,46 +2375,86 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
             )}
 
             {/* Special Neon Traits */}
-            {inspectedPlanet.traits && inspectedPlanet.traits.length > 0 && (
+            {inspectedPlanet.traits &&
+              inspectedPlanet.traits.filter((t) => typeof t === "string" && t.trim().length > 0).length > 0 && (
               <div className="space-y-1.5">
                 <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">
                   Sinais Especiais Detectados
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {inspectedPlanet.traits.map((trait) => {
-                    const isLife =
-                      trait === SPECIAL_TRAITS.INTELLIGENT_LIFE ||
-                      trait === SPECIAL_TRAITS.ADVANCED_CIVILIZATION;
-                    const isRuins = trait === SPECIAL_TRAITS.PRECURSOR_RUINS;
-                    return (
-                      <span
-                        key={trait}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${
-                          isRuins
-                            ? "bg-amber-500/20 text-amber-200 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.35)]"
-                            : isLife
-                            ? "bg-emerald-500/20 text-emerald-200 border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.3)]"
-                            : "bg-purple-500/20 text-purple-200 border-purple-400"
-                        }`}
-                      >
-                        {isRuins && <Wand2 className="w-3 h-3 text-amber-300 flex-shrink-0" />}
-                        {isLife && (
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-                        )}
-                        <span>{trait}</span>
-                      </span>
-                    );
-                  })}
+                  {inspectedPlanet.traits
+                    .filter((t) => typeof t === "string" && t.trim().length > 0)
+                    .map((trait) => {
+                      const isLife =
+                        trait === SPECIAL_TRAITS.INTELLIGENT_LIFE ||
+                        trait === SPECIAL_TRAITS.ADVANCED_CIVILIZATION;
+                      const isRuins = trait === SPECIAL_TRAITS.PRECURSOR_RUINS;
+                      return (
+                        <span
+                          key={trait}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                            isRuins
+                              ? "bg-amber-500/20 text-amber-200 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.35)]"
+                              : isLife
+                              ? "bg-emerald-500/20 text-emerald-200 border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.3)]"
+                              : "bg-purple-500/20 text-purple-200 border-purple-400"
+                          }`}
+                        >
+                          {isRuins && <Wand2 className="w-3 h-3 text-amber-300 flex-shrink-0" />}
+                          {isLife && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                          )}
+                          <span>{trait}</span>
+                        </span>
+                      );
+                    })}
                 </div>
               </div>
             )}
 
-            {/* Tags de Recursos (Pílulas Visuais) */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">
-                Depósitos de Recursos Identificados
-              </span>
-              <div className="flex flex-wrap gap-1.5">
+            {/* Tags de Recursos (Pílulas Visuais com Edição e z-[9999]) */}
+            <div className="space-y-1.5 overflow-visible relative z-[9999]">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">
+                  Depósitos de Recursos Identificados
+                </span>
+                {isGM && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingResourceInInspector((prev) => !prev)}
+                    className="text-[10px] font-bold text-amber-300 hover:text-amber-200 flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>{isAddingResourceInInspector ? "Fechar" : "+ Recurso"}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Popover de Adicionar Recurso (z-[9999]) */}
+              {isGM && isAddingResourceInInspector && (
+                <div className="p-2 bg-[#0A0D14] border border-amber-400/40 rounded-xl shadow-2xl backdrop-blur-xl flex items-center gap-2 relative z-[9999] animate-in fade-in duration-150">
+                  <select
+                    value={newResourceName}
+                    onChange={(e) => setNewResourceName(e.target.value)}
+                    className="flex-1 px-2.5 py-1 bg-black/80 border border-white/20 rounded-lg text-slate-200 text-xs focus:ring-1 focus:ring-amber-400"
+                  >
+                    {ALL_PLANET_RESOURCES.map((r) => (
+                      <option key={r} value={r} className="bg-[#0C0F17]">
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => handleAddPlanetResource(inspectedPlanet, newResourceName)}
+                    className="px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-bold rounded-lg text-xs transition-all shadow cursor-pointer flex-shrink-0"
+                  >
+                    Adicionar
+                  </button>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-1.5 overflow-visible relative">
                 {(!inspectedPlanet.resources || inspectedPlanet.resources.length === 0) ? (
                   <span className="text-[11px] text-slate-500 italic">
                     Nenhum recurso mapeado neste setor planetário.
@@ -2384,15 +2467,38 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
                       textColor: "text-slate-200",
                     };
                     return (
-                      <span
+                      <div
                         key={res.name}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[11px] font-bold ${theme.badgeBg} ${theme.borderColor} ${theme.textColor}`}
+                        onClick={() => isGM && handleCyclePlanetResourceLevel(inspectedPlanet, res.name)}
+                        title={
+                          isGM
+                            ? `${res.name} (Nível ${res.level}) • Clique para alternar nível`
+                            : `${res.name} (${res.level})`
+                        }
+                        className={`group relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-bold transition-all shadow-sm ${
+                          theme.badgeBg
+                        } ${theme.borderColor} ${theme.textColor} ${
+                          isGM ? "cursor-pointer hover:border-amber-400 hover:shadow-[0_0_8px_rgba(251,191,36,0.25)]" : ""
+                        }`}
                       >
                         <span>{res.name}</span>
-                        <span className="text-[10px] text-amber-300 font-mono ml-0.5">
-                          {getResourceLevelArrows(res.level)}
+                        <span className="text-[10px] text-amber-300 font-mono ml-0.5 bg-black/40 px-1 py-0.2 rounded">
+                          {getResourceLevelArrows(res.level)} {res.level}
                         </span>
-                      </span>
+                        {isGM && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemovePlanetResource(inspectedPlanet, res.name);
+                            }}
+                            title="Remover recurso"
+                            className="p-0.5 text-slate-400 hover:text-rose-400 transition-colors ml-0.5"
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        )}
+                      </div>
                     );
                   })
                 )}

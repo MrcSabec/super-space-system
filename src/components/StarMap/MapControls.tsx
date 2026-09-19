@@ -489,7 +489,8 @@ export const MapControls: React.FC<MapControlsProps> = ({
                     {TROOP_CLASSES.map((cls) => {
                       const isSelected = selectedTroopClass === cls.id;
                       const quota = troopQuotas?.[cls.id];
-                      const isExhausted = quota ? quota.available <= 0 : false;
+                      const isNeutralGM = isGM && selectedFactionForAdd === "neutral";
+                      const isExhausted = isNeutralGM ? false : quota ? quota.available <= 0 : false;
                       const flavor = factionTroopFlavors?.[
                         cls.id === "light_infantry"
                           ? "lightInfantry"
@@ -543,7 +544,16 @@ export const MapControls: React.FC<MapControlsProps> = ({
                             )}
                           </div>
 
-                          {quota ? (
+                          {isNeutralGM ? (
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <span className="text-[10px] font-mono font-bold text-amber-400">
+                                {quota?.placed ?? 0} / ∞
+                              </span>
+                              <span className="px-1 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[8px] font-mono">
+                                ∞ disp.
+                              </span>
+                            </div>
+                          ) : quota ? (
                             <div className="flex items-center gap-1.5 flex-shrink-0">
                               <span
                                 className={`text-[10px] font-mono font-bold ${
@@ -572,7 +582,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
                     })}
                   </div>
 
-                  {troopQuotas?.[selectedTroopClass]?.available === 0 && (
+                  {!isGM && troopQuotas?.[selectedTroopClass]?.available === 0 && (
                     <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-200 text-[10px] font-mono flex items-start gap-1.5 animate-in fade-in duration-150 mt-1.5">
                       <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0 mt-0.5" />
                       <span>

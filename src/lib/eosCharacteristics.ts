@@ -463,29 +463,6 @@ export const EOS_CHARACTERISTICS_CATEGORIES: CharacteristicCategory[] = [
     ],
   },
   {
-    id: "conhecimento_galactico",
-    name: "Conhecimento Galáctico",
-    iconName: "Brain",
-    badgeColor: "indigo",
-    description: "Arquivos históricos abrangentes, perfil psicológico e sociopolítico das grandes potências.",
-    items: [
-      {
-        id: "banco_dados_galactico",
-        name: "Banco de Dados Galáctico",
-        type: "levels",
-        category: "Conhecimento Galáctico",
-        summary: "Repositório mestre contendo história, doutrinas, fraquezas e tratados de todas as facções.",
-        levels: [
-          { level: "Nível I", desc: "Conhece as principais facções e conceitos elementares do universo." },
-          { level: "Nível II", desc: "Conhece características gerais das grandes civilizações e suas origens." },
-          { level: "Nível III", desc: "Conhece seus históricos políticos, guerras passadas e alianças clássicas." },
-          { level: "Nível IV", desc: "Conhece tecnologias patenteadas, doutrinas de guerra e comportamentos recorrentes." },
-          { level: "Nível V", desc: "Possui um arquivo histórico irrestrito e enciclopédico de escala setorial." },
-        ],
-      },
-    ],
-  },
-  {
     id: "percepcao_informacao",
     name: "Percepção e Informação",
     iconName: "Radio",

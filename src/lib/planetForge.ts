@@ -281,8 +281,8 @@ export function generatePlanetStats(options: GeneratePlanetOptions = {}): Genera
     }
   }
 
-  // Precursor Ruins Check
-  if (options.forceRuins || (options.allowRuins && Math.random() < 0.05)) {
+  // Precursor Ruins Check - strictly requires explicit boolean true
+  if (options.forceRuins === true || (options.allowRuins === true && Math.random() < 0.05)) {
     traits.push(SPECIAL_TRAITS.PRECURSOR_RUINS);
   }
 
@@ -391,7 +391,7 @@ export function generatePlanetStats(options: GeneratePlanetOptions = {}): Genera
     atmosphere,
     gravity,
     resources,
-    traits,
+    traits: traits.filter((t): t is string => typeof t === "string" && t.trim().length > 0),
   };
 }
 

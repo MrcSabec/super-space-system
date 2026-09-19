@@ -120,7 +120,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
         setAtmosphere(p.atmosphere || "Respirável");
         setGravity(p.gravity || "Normal");
         setResources(p.resources || []);
-        setTraits(p.traits || []);
+        setTraits((p.traits || []).filter((t): t is string => typeof t === "string" && t.trim().length > 0));
 
         if (p.anomalousOrbit) {
           setAnomalousOrbit(p.anomalousOrbit);
@@ -145,22 +145,23 @@ export const EntityModal: React.FC<EntityModalProps> = ({
 
   // Trigger procedural generator
   const handleRollProcedural = () => {
-    const stats = generatePlanetStats({ allowRuins: allowRuinsInGen });
+    const stats = generatePlanetStats({ allowRuins: Boolean(allowRuinsInGen) });
     setPlanetSize(stats.size);
     setPlanetType(stats.type);
     setTemperature(stats.temperature);
     setAtmosphere(stats.atmosphere);
     setGravity(stats.gravity);
     setResources(stats.resources);
-    setTraits(stats.traits);
+    setTraits((stats.traits || []).filter((t): t is string => typeof t === "string" && t.trim().length > 0));
   };
 
   // Toggle trait
   const toggleTrait = (traitName: string) => {
-    if (traits.includes(traitName)) {
-      setTraits(traits.filter((t) => t !== traitName));
+    const cleanTraitName = traitName.trim();
+    if (traits.some((t) => t.trim() === cleanTraitName)) {
+      setTraits(traits.filter((t) => t.trim() !== cleanTraitName));
     } else {
-      setTraits([...traits, traitName]);
+      setTraits([...traits.filter((t) => t.trim().length > 0), cleanTraitName]);
     }
   };
 
@@ -518,7 +519,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
               </div>
 
               {/* Tags de Recursos (Interactive Pills) */}
-              <div>
+              <div className="overflow-visible relative z-[9999]">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-slate-300 uppercase tracking-wider font-bold flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -532,7 +533,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                   </span>
                 </div>
 
-                <div className="flex flex-wrap gap-2 p-3 bg-black/30 rounded-2xl border border-white/5 min-h-[50px] items-center">
+                <div className="flex flex-wrap gap-2 p-3 bg-black/30 rounded-2xl border border-white/5 min-h-[50px] items-center overflow-visible relative">
                   {resources.length === 0 ? (
                     <span className="text-[11px] text-slate-500 italic">
                       Nenhum recurso cadastrado. Use o gerador ou adicione abaixo.
@@ -574,11 +575,11 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                 </div>
 
                 {/* Add Resource Selector */}
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 relative z-[9999]">
                   <select
                     value={resourceToAdd}
                     onChange={(e) => setResourceToAdd(e.target.value)}
-                    className="flex-1 px-3 py-1.5 bg-black/60 border border-white/10 rounded-xl text-slate-200 text-xs"
+                    className="flex-1 px-3 py-1.5 bg-black/80 border border-white/15 rounded-xl text-slate-200 text-xs focus:ring-1 focus:ring-amber-400"
                   >
                     {ALL_PLANET_RESOURCES.map((r) => (
                       <option key={r} value={r}>
@@ -598,7 +599,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
               </div>
 
               {/* Special Traits / Neon Badges */}
-              <div>
+              <div className="overflow-visible relative z-[9999]">
                 <label className="block text-slate-300 uppercase tracking-wider mb-2 font-bold flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
                   Características Especiais (Neon Traits)
@@ -610,7 +611,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                     type="button"
                     onClick={() => toggleTrait(SPECIAL_TRAITS.INTELLIGENT_LIFE)}
                     className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      traits.includes(SPECIAL_TRAITS.INTELLIGENT_LIFE)
+                      traits.some((t) => t === SPECIAL_TRAITS.INTELLIGENT_LIFE)
                         ? "bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.3)] ring-1 ring-emerald-400/50"
                         : "bg-black/30 text-slate-500 border-white/5 hover:border-white/20 hover:text-slate-300"
                     }`}
@@ -624,7 +625,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                     type="button"
                     onClick={() => toggleTrait(SPECIAL_TRAITS.ADVANCED_CIVILIZATION)}
                     className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      traits.includes(SPECIAL_TRAITS.ADVANCED_CIVILIZATION)
+                      traits.some((t) => t === SPECIAL_TRAITS.ADVANCED_CIVILIZATION)
                         ? "bg-purple-500/20 text-purple-200 border-purple-400 shadow-[0_0_15px_rgba(192,132,252,0.4)] ring-1 ring-purple-400/60"
                         : "bg-black/30 text-slate-500 border-white/5 hover:border-white/20 hover:text-slate-300"
                     }`}
@@ -638,7 +639,7 @@ export const EntityModal: React.FC<EntityModalProps> = ({
                     type="button"
                     onClick={() => toggleTrait(SPECIAL_TRAITS.PRECURSOR_RUINS)}
                     className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      traits.includes(SPECIAL_TRAITS.PRECURSOR_RUINS)
+                      traits.some((t) => t === SPECIAL_TRAITS.PRECURSOR_RUINS)
                         ? "bg-amber-500/25 text-amber-200 border-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.45)] ring-1 ring-amber-400/70"
                         : "bg-black/30 text-slate-500 border-white/5 hover:border-white/20 hover:text-slate-300"
                     }`}

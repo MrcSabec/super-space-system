@@ -13,6 +13,7 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import { User, Campaign, MapState, Planet, Troop, FactionId, PlayerCharacter } from "@/types/sss";
+import { INITIAL_TURN0_DIPLOMATIC_RELATIONS } from "./diplomacy";
 
 // --- Hash Utility ---
 export async function hashPassword(password: string): Promise<string> {
@@ -177,6 +178,7 @@ export async function createCampaign(params: {
     allowedFactions: params.allowedFactions.length > 0 ? params.allowedFactions : ["federation", "neutral"],
     initialPlanets: params.initialPlanets,
     players: [],
+    diplomatic_relations: { ...INITIAL_TURN0_DIPLOMATIC_RELATIONS },
     createdAt: now,
   };
 
@@ -299,7 +301,13 @@ export async function getCampaign(campaignId: string): Promise<Campaign | null> 
   if (isFirebaseConfigured() && db) {
     try {
       const snap = await getDoc(doc(db, "campaigns", campaignId));
-      if (snap.exists()) return snap.data() as Campaign;
+      if (snap.exists()) {
+        const c = snap.data() as Campaign;
+        if (!c.diplomatic_relations || Object.keys(c.diplomatic_relations).length === 0) {
+          c.diplomatic_relations = { ...INITIAL_TURN0_DIPLOMATIC_RELATIONS };
+        }
+        return c;
+      }
     } catch (err) {
       console.warn("Firestore getCampaign error:", err);
     }
@@ -310,25 +318,48 @@ export async function getCampaign(campaignId: string): Promise<Campaign | null> 
     const res = await fetch(`/api/store?type=campaign&id=${encodeURIComponent(campaignId)}`);
     if (res.ok) {
       const data = await res.json();
-      if (data.campaign) return data.campaign as Campaign;
+      if (data.campaign) {
+        const c = data.campaign as Campaign;
+        if (!c.diplomatic_relations || Object.keys(c.diplomatic_relations).length === 0) {
+          c.diplomatic_relations = { ...INITIAL_TURN0_DIPLOMATIC_RELATIONS };
+        }
+        return c;
+      }
     }
   } catch {}
 
   const campaigns = getLocalItem<Record<string, Campaign>>(LS_CAMPAIGNS, {});
-  return campaigns[campaignId] || null;
+  const localCamp = campaigns[campaignId] || null;
+  if (localCamp && (!localCamp.diplomatic_relations || Object.keys(localCamp.diplomatic_relations).length === 0)) {
+    localCamp.diplomatic_relations = { ...INITIAL_TURN0_DIPLOMATIC_RELATIONS };
+  }
+  return localCamp;
 }
 
 export function subscribeCampaign(
   campaignId: string,
   onUpdate: (campaign: Campaign) => void
 ): () => void {
+  const enrichCamp = (c: Campaign): Campaign => {
+    if (!c.diplomatic_relations || Object.keys(c.diplomatic_relations).length === 0) {
+      return { ...c, diplomatic_relations: { ...INITIAL_TURN0_DIPLOMATIC_RELATIONS } };
+    }
+    return c;
+  };
+
   if (isFirebaseConfigured() && db) {
     try {
-      const unsubscribe = onSnapshot(doc(db, "campaigns", campaignId), (docSnap) => {
-        if (docSnap.exists()) {
-          onUpdate(docSnap.data() as Campaign);
+      const unsubscribe = onSnapshot(
+        doc(db, "campaigns", campaignId),
+        (docSnap) => {
+          if (docSnap.exists()) {
+            onUpdate(enrichCamp(docSnap.data() as Campaign));
+          }
+        },
+        (err) => {
+          console.warn("Firestore subscribeCampaign onSnapshot error:", err);
         }
-      });
+      );
       return unsubscribe;
     } catch (err) {
       console.warn("Firestore subscribeCampaign onSnapshot error, falling back to local:", err);
@@ -339,7 +370,7 @@ export function subscribeCampaign(
   fetch(`/api/store?type=campaign&id=${encodeURIComponent(campaignId)}`)
     .then((r) => r.json())
     .then((data) => {
-      if (data.campaign) onUpdate(data.campaign);
+      if (data.campaign) onUpdate(enrichCamp(data.campaign));
     })
     .catch(() => {});
 
@@ -492,11 +523,17 @@ export function subscribeMapState(
 ): () => void {
   if (isFirebaseConfigured() && db) {
     try {
-      const unsubscribe = onSnapshot(doc(db, "campaign_maps", campaignId), (docSnap) => {
-        if (docSnap.exists()) {
-          onUpdate(docSnap.data() as MapState);
+      const unsubscribe = onSnapshot(
+        doc(db, "campaign_maps", campaignId),
+        (docSnap) => {
+          if (docSnap.exists()) {
+            onUpdate(docSnap.data() as MapState);
+          }
+        },
+        (err) => {
+          console.warn("Firestore subscribeMapState onSnapshot error:", err);
         }
-      });
+      );
       return unsubscribe;
     } catch (err) {
       console.warn("Firestore onSnapshot error, falling back to local channel:", err);
@@ -542,6 +579,9 @@ export async function saveMapState(campaignId: string, state: MapState): Promise
   if (isFirebaseConfigured() && db) {
     try {
       await setDoc(doc(db, "campaign_maps", campaignId), updatedState);
+      try {
+        await updateDoc(doc(db, "campaigns", campaignId), { mapState: updatedState });
+      } catch {}
       return;
     } catch (err) {
       console.warn("Firestore saveMapState error, saving locally:", err);

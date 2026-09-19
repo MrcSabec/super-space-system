@@ -63,6 +63,44 @@ export function getDiplomaticPairKey(factionA: FactionId, factionB: FactionId): 
 }
 
 /**
+ * Matriz inicial oficial de diplomacia no Turno 0 (21 pares canônicos).
+ */
+export const INITIAL_TURN0_DIPLOMATIC_RELATIONS: Record<string, DiplomaticStatus> = {
+  // Humanos (federation)
+  [getDiplomaticPairKey("federation", "pact")]: "Aliados",
+  [getDiplomaticPairKey("federation", "hegemony")]: "Tensão",
+  [getDiplomaticPairKey("federation", "synthetic")]: "Tensão",
+  [getDiplomaticPairKey("federation", "syndicate")]: "Aliados",
+  [getDiplomaticPairKey("federation", "hollow")]: "Tensão",
+  [getDiplomaticPairKey("federation", "rockborn")]: "Neutros",
+
+  // Pacto (pact)
+  [getDiplomaticPairKey("pact", "hegemony")]: "Tensão",
+  [getDiplomaticPairKey("pact", "synthetic")]: "Aliados",
+  [getDiplomaticPairKey("pact", "syndicate")]: "Aliados",
+  [getDiplomaticPairKey("pact", "hollow")]: "Tensão",
+  [getDiplomaticPairKey("pact", "rockborn")]: "Neutros",
+
+  // Hegemonia (hegemony)
+  [getDiplomaticPairKey("hegemony", "synthetic")]: "Tensão",
+  [getDiplomaticPairKey("hegemony", "syndicate")]: "Aliados",
+  [getDiplomaticPairKey("hegemony", "hollow")]: "Tensão",
+  [getDiplomaticPairKey("hegemony", "rockborn")]: "Neutros",
+
+  // União (synthetic)
+  [getDiplomaticPairKey("synthetic", "syndicate")]: "Aliados",
+  [getDiplomaticPairKey("synthetic", "hollow")]: "Tensão",
+  [getDiplomaticPairKey("synthetic", "rockborn")]: "Neutros",
+
+  // Sindicato (syndicate)
+  [getDiplomaticPairKey("syndicate", "hollow")]: "Neutros",
+  [getDiplomaticPairKey("syndicate", "rockborn")]: "Neutros",
+
+  // Terra Oca (hollow)
+  [getDiplomaticPairKey("hollow", "rockborn")]: "Neutros",
+};
+
+/**
  * Mapeamento de apelidos e nomes para matching flexível caso o mestre use termos em PT-BR
  */
 const FACTION_ALIASES: Record<FactionId, string[]> = {
