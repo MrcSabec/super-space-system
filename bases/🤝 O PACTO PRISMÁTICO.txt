@@ -1,0 +1,36 @@
+🤝 O PACTO PRISMÁTICO
+
+"Nossa força não está no tamanho dos nossos canhões, mas na quantidade de mãos que seguram o escudo."
+
+Alto-Emissário da Assembleia em Eos-Omega
+
+Nesta nova fronteira, o jogador assume o papel de Alto-Emissário, a voz e o braço executivo do Conselho das Espécies no sistema de Eos-Omega. Independentemente da sua raça de origem (Humano, Lumini, Kaelox, Aquatis, Vesper ou IA), você foi escolhido por votação na capital para guiar esta expedição pluripartidária. Portanto, seu Desafio Político está em manter a harmonia entre as diferentes espécies que compõem suas colônias. Diferente de um ditador, você responde diretamente à Assembleia, precisando equilibrar interesses culturais diversos, manter a paz diplomática e evitar que o caldeirão cultural transborde em conflitos internos ou se quebre diante de pressões externas. Seu mandato depende da aprovação do conselho e da estabilidade das coalizões.
+
+Contexto Histórico Local
+
+Nascido do desespero e da união contra a brutalidade da Hegemonia, o Pacto Prismático provou que a cooperação supera a dominação e o isolamento. Quando os ecos da estrela morta Eos-Omega alcançaram os radares da Assembleia, o Prisma não enviou frotas de cerco, mas sim naves coloniais, cientistas e diplomatas. O objetivo do Pacto no setor não é a dominação militar do mapa, mas sim integrar pacificamente mundos neutros e estudar a tecnologia dos precursores para o benefício coletivo. Acima de tudo, o Pacto Prismático está lá para erguer um bastião inexpugnável, garantindo que as antigas superarmas do sistema não caiam nas mãos do imperialismo da Hegemonia ou da ganância do Sindicato do Crédito.
+
+Anexação Cultural
+Expande territórios através de emissários, rotas de comércio e influência cultural, podendo converter planetas sem disparar armas.
+
+Conselho das Espécies
+Facilidade extrema em formar alianças e coalizões. Tratados diplomáticos com o Prisma são naturalmente mais estáveis e difíceis de serem quebrados por sabotagem.
+
+Doutrina de Contenção
+Foco militar em defesa absoluta. Frotas e estações espaciais possuem tecnologia de escudos defletores massivos, resistindo a bombardeios pesados.
+
+Economia de Coalizão
+Compartilhamento eficiente e rápido de recursos entre planetas com biomas e necessidades completamente diferentes, ignorando certas penalidades de logística.
+
+Única por Raça:
+Se for Humano: Gambiarra Tecnológica (Integração rápida e bruta de tecnologias alienígenas).
+
+Se for Lumini: Empatia Biológica (Lê as intenções verdadeiras de diplomatas e NPCs, dificultando traições políticas caso toque neles).
+
+Se for Kaelox: Guarda de Honra (Tropas terrestres dificilmente recuam e sofrem quebra de moral, mesmo em desvantagem numérica).
+
+Se for Aquatis: Engenharia Fluida (Permite colonizar os oceanos abissais e extrair minérios do fundo do mar mais facilmente).
+
+Se for Vesper: Navegação de Baixa Gravidade (Caças e naves menores possuem esquiva e velocidade de movimentação no mapa sistêmico muito superiores).
+
+Se for IA: Auditoria de Dados (A IA processa dados públicos e burocráticos tão rápido que detecta inconsistências lógicas mais facilmente).
