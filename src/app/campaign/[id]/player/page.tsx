@@ -324,6 +324,7 @@ export default function PlayerCampaignPage({
                 isGM={false}
                 currentUser={user}
                 character={character}
+                allCharacters={character ? [character] : []}
                 campaignFactions={campaign.allowedFactions}
               />
             </div>

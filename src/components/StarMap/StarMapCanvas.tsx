@@ -391,7 +391,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
 
       const visibleToList = isNeutralBypass
         ? ["Todos", "all", "dm", "neutral"]
-        : Array.from(new Set(["dm", ownerId, targetFactionId]));
+        : Array.from(new Set(["all", "Todos", "dm", ownerId, targetFactionId]));
 
       const newTroop: Troop = {
         id: `trp_${Date.now()}_` + Math.random().toString(36).substring(2, 6),
@@ -401,7 +401,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
         factionId: targetFactionId,
         angle: 0,
         troopClass: selectedTroopClass,
-        is_airspace: selectedTroopClass === "elite" ? isAirspace : undefined,
+        is_airspace: selectedTroopClass === "elite" ? Boolean(isAirspace) : false,
         payload: isVehicleOrAir ? payloadCount : 0,
         ownerId,
         visible_to: visibleToList,

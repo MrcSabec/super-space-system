@@ -573,14 +573,34 @@ export function subscribeMapState(
   };
 }
 
+/**
+ * Recursively removes all keys with undefined values so Firebase Firestore
+ * setDoc/updateDoc/writeBatch never throws "Unsupported field value: undefined".
+ */
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === undefined) return null as unknown as T;
+  if (data === null || typeof data !== "object") return data;
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizeForFirestore(item)) as unknown as T;
+  }
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    if (value !== undefined) {
+      result[key] = sanitizeForFirestore(value);
+    }
+  }
+  return result as T;
+}
+
 export async function saveMapState(campaignId: string, state: MapState): Promise<void> {
   const updatedState = { ...state, updatedAt: Date.now() };
+  const sanitized = sanitizeForFirestore(updatedState);
 
   if (isFirebaseConfigured() && db) {
     try {
-      await setDoc(doc(db, "campaign_maps", campaignId), updatedState);
+      await setDoc(doc(db, "campaign_maps", campaignId), sanitized);
       try {
-        await updateDoc(doc(db, "campaigns", campaignId), { mapState: updatedState });
+        await updateDoc(doc(db, "campaigns", campaignId), { mapState: sanitized });
       } catch {}
       return;
     } catch (err) {
@@ -663,7 +683,7 @@ export async function savePlayerCharacter(character: PlayerCharacter): Promise<v
 
   if (isFirebaseConfigured() && db) {
     try {
-      await setDoc(doc(db, "campaign_characters", docKey), updatedChar);
+      await setDoc(doc(db, "campaign_characters", docKey), sanitizeForFirestore(updatedChar));
       return;
     } catch (err) {
       console.warn("Firestore savePlayerCharacter error, using fallback:", err);
@@ -838,19 +858,19 @@ export async function commitBlueprintBatch(
       const batch = writeBatch(db);
 
       if (preparedMapState) {
-        batch.set(doc(db, "campaign_maps", campaignId), preparedMapState);
+        batch.set(doc(db, "campaign_maps", campaignId), sanitizeForFirestore(preparedMapState));
       }
 
       if (preparedCharacters && preparedCharacters.length > 0) {
         for (const char of preparedCharacters) {
           const docKey = getCharacterDocKey(campaignId, char.username);
-          batch.set(doc(db, "campaign_characters", docKey), char);
+          batch.set(doc(db, "campaign_characters", docKey), sanitizeForFirestore(char));
         }
       }
 
       if (payload.diplomacy) {
         batch.update(doc(db, "campaigns", campaignId), {
-          diplomatic_relations: payload.diplomacy,
+          diplomatic_relations: sanitizeForFirestore(payload.diplomacy),
         });
       }
 

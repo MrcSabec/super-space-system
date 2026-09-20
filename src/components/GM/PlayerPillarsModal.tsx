@@ -52,6 +52,7 @@ interface PlayerPillarsModalProps {
   characters: PlayerCharacter[];
   campaignName: string;
   onUpdateCharacter?: (char: PlayerCharacter) => Promise<void>;
+  onOpenCharacteristicsModal?: () => void;
 }
 
 type ActiveCellPopover =
@@ -67,6 +68,7 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
   characters,
   campaignName,
   onUpdateCharacter,
+  onOpenCharacteristicsModal,
 }) => {
   const [activePopover, setActivePopover] = useState<ActiveCellPopover>(null);
   const [editingCreditsId, setEditingCreditsId] = useState<string | null>(null);
@@ -197,6 +199,21 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                 População Total: <strong>{totalPopulation.toLocaleString("pt-BR")}</strong>
               </span>
             </div>
+
+            {onOpenCharacteristicsModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenCharacteristicsModal();
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer"
+                title="Abrir auditoria e gestão completa de características dos jogadores"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Auditoria de Perks</span>
+              </button>
+            )}
           </div>
 
           {/* Realtime Save Toast */}
@@ -209,7 +226,7 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
         </div>
 
         {/* Main Content Area: Responsive Data Grid */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3 pb-36 custom-scrollbar">
           {characters.length === 0 ? (
             <div className="p-16 text-center text-slate-400 font-mono text-xs space-y-2">
               <Users className="w-8 h-8 text-slate-600 mx-auto mb-2" />
@@ -219,7 +236,7 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
               </p>
             </div>
           ) : (
-            <div className="w-full border border-white/10 rounded-2xl bg-black/40 shadow-2xl overflow-hidden">
+            <div className="w-full border border-white/10 rounded-2xl bg-black/40 shadow-2xl">
               <table className="w-full text-left text-xs font-mono border-collapse table-fixed">
                 <thead>
                   <tr className="border-b border-white/10 bg-black/70 text-slate-400 text-[10px] uppercase tracking-wider">
@@ -242,7 +259,22 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                       Poderio (Divs)
                     </th>
                     <th className="px-1.5 py-2.5 text-center w-[10%]">
-                      Conhecimento
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Conhecimento</span>
+                        {onOpenCharacteristicsModal && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onOpenCharacteristicsModal();
+                            }}
+                            title="Abrir Painel Completo de Características"
+                            className="p-0.5 rounded text-amber-400 hover:text-amber-200 hover:bg-amber-400/20 transition-colors"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </th>
                     <th className="px-2 py-2.5 text-left w-[10%]">
                       Avisos
@@ -250,7 +282,9 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {characters.map((char) => {
+                  {characters.map((char, index) => {
+                    const isBottomRow = index >= characters.length - 2 || (characters.length <= 3 && index > 0);
+                    const isRowActive = activePopover?.charId === char.id;
                     const fac = getFaction(char.factionId);
                     const census = FACTION_INITIAL_CENSUS[char.factionId] || FACTION_INITIAL_CENSUS.federation;
                     const credits = char.galacticCredits ?? census.credits;
@@ -277,7 +311,9 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                     return (
                       <tr
                         key={char.id}
-                        className="hover:bg-white/[0.02] transition-colors group"
+                        className={`hover:bg-white/[0.02] transition-colors group ${
+                          isRowActive ? "relative z-40" : "relative z-10"
+                        }`}
                       >
                         {/* 1. Facção & Comandante */}
                         <td className="px-3 py-2 w-[21%] border-r border-white/5">
@@ -310,7 +346,7 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                         </td>
 
                         {/* 2. Satisfação (Pilar 1) */}
-                        <td className="px-1.5 py-2 text-center relative w-[11%]">
+                        <td className={`px-1.5 py-2 text-center w-[11%] ${activePopover?.charId === char.id && activePopover.type === "satisfaction" ? "relative z-50" : "relative"}`}>
                           <button
                             type="button"
                             onClick={() =>
@@ -332,7 +368,9 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                           {activePopover?.type === "satisfaction" && activePopover.charId === char.id && (
                             <div
                               ref={popoverRef}
-                              className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 w-44 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+                              className={`absolute z-50 left-1/2 -translate-x-1/2 w-44 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 ${
+                                isBottomRow ? "bottom-full mb-1.5" : "top-full mt-1.5"
+                              }`}
                             >
                               <div className="px-2 py-1 text-[9px] font-mono text-slate-400 border-b border-white/5 uppercase tracking-wider text-left">
                                 Satisfação Civil:
@@ -363,7 +401,7 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                         </td>
 
                         {/* 3. Economia (Pilar 2) */}
-                        <td className="px-1.5 py-2 text-center relative w-[11%]">
+                        <td className={`px-1.5 py-2 text-center w-[11%] ${activePopover?.charId === char.id && activePopover.type === "economy" ? "relative z-50" : "relative"}`}>
                           <button
                             type="button"
                             onClick={() =>
@@ -385,7 +423,9 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                           {activePopover?.type === "economy" && activePopover.charId === char.id && (
                             <div
                               ref={popoverRef}
-                              className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 w-44 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+                              className={`absolute z-50 left-1/2 -translate-x-1/2 w-44 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 ${
+                                isBottomRow ? "bottom-full mb-1.5" : "top-full mt-1.5"
+                              }`}
                             >
                               <div className="px-2 py-1 text-[9px] font-mono text-slate-400 border-b border-white/5 uppercase tracking-wider text-left">
                                 Economia & Finanças:
@@ -552,7 +592,7 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                         </td>
 
                         {/* 6. Poderio Militar (Pilar 3) */}
-                        <td className="px-1.5 py-2 text-center relative w-[12%]">
+                        <td className={`px-1.5 py-2 text-center w-[12%] ${activePopover?.charId === char.id && activePopover.type === "military" ? "relative z-50" : "relative"}`}>
                           <button
                             type="button"
                             onClick={() =>
@@ -575,7 +615,9 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                           {activePopover?.type === "military" && activePopover.charId === char.id && (
                             <div
                               ref={popoverRef}
-                              className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 w-48 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+                              className={`absolute z-50 left-1/2 -translate-x-1/2 w-48 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 ${
+                                isBottomRow ? "bottom-full mb-1.5" : "top-full mt-1.5"
+                              }`}
                             >
                               <div className="px-2 py-1 text-[9px] font-mono text-slate-400 border-b border-white/5 uppercase tracking-wider text-left">
                                 Poderio Militar:
@@ -606,7 +648,7 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                         </td>
 
                         {/* 7. Conhecimento & Características */}
-                        <td className="px-1 py-2 text-center relative w-[10%]">
+                        <td className={`px-1 py-2 text-center w-[10%] ${activePopover?.charId === char.id && activePopover.type === "perks" ? "relative z-50" : "relative"}`}>
                           <div className="inline-flex items-center justify-center gap-1 w-full max-w-[110px]">
                             <button
                               type="button"
@@ -658,16 +700,33 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                           {activePopover?.type === "perks" && activePopover.charId === char.id && (
                             <div
                               ref={popoverRef}
-                              className="absolute z-50 top-full right-0 mt-1 w-80 max-h-96 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-3 space-y-2 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 overflow-y-auto custom-scrollbar"
+                              className={`absolute z-50 right-0 w-80 max-h-96 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-3 space-y-2 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 overflow-y-auto custom-scrollbar ${
+                                isBottomRow ? "bottom-full mb-1.5" : "top-full mt-1.5"
+                              }`}
                             >
                               <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
                                 <span className="text-[11px] font-mono text-slate-200 font-bold flex items-center gap-1">
                                   <Sparkles className="w-3 h-3 text-amber-400" />
                                   Licenças ({countUnlockedCharacteristics(unlockedPerks)}/{TOTAL_CHARACTERISTICS_COUNT})
                                 </span>
-                                <span className="text-[10px] font-mono text-amber-300">
-                                  Saldo: {points} Pts
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  {onOpenCharacteristicsModal && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActivePopover(null);
+                                        onClose();
+                                        onOpenCharacteristicsModal();
+                                      }}
+                                      className="text-[10px] font-mono text-amber-300 hover:underline cursor-pointer"
+                                    >
+                                      Auditoria ↗
+                                    </button>
+                                  )}
+                                  <span className="text-[10px] font-mono text-amber-300">
+                                    Saldo: {points} Pts
+                                  </span>
+                                </div>
                               </div>
 
                               <div className="space-y-3 pt-1">

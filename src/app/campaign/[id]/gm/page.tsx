@@ -14,6 +14,7 @@ import { GameStateProvider, useGameState } from "@/context/GameStateContext";
 import { StarMapCanvas } from "@/components/StarMap/StarMapCanvas";
 import { PlayerPillarsModal } from "@/components/GM/PlayerPillarsModal";
 import { DiplomacyModal } from "@/components/GM/DiplomacyModal";
+import { PlayerCharacteristicsAuditModal } from "@/components/GM/PlayerCharacteristicsAuditModal";
 import { BrandLogo } from "@/components/BrandLogo";
 import {
   ArrowLeft,
@@ -59,6 +60,7 @@ const GMMapContent: React.FC<GMMapContentProps> = ({
 
   const [isPillarsModalOpen, setIsPillarsModalOpen] = useState(false);
   const [isDiplomacyModalOpen, setIsDiplomacyModalOpen] = useState(false);
+  const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const handleApply = async () => {
@@ -254,6 +256,19 @@ const GMMapContent: React.FC<GMMapContentProps> = ({
           </span>
           <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
         </button>
+
+        <button
+          type="button"
+          onClick={() => setIsCharacteristicsModalOpen(true)}
+          title="Abrir Auditoria de Características dos Jogadores"
+          className="flex items-center gap-2 py-3 px-2.5 bg-[#0C0F17]/90 hover:bg-[#141A26] text-amber-300 hover:text-amber-200 border-y border-l border-amber-400/30 rounded-l-2xl shadow-xl backdrop-blur-md transition-all group cursor-pointer hover:border-amber-400/60"
+        >
+          <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+          <span className="text-[10px] font-mono font-bold tracking-widest [writing-mode:vertical-rl] rotate-180 uppercase text-slate-300 group-hover:text-amber-200">
+            Perks
+          </span>
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+        </button>
       </div>
 
       {/* Player Empire Pillars Management Modal (GM Only) */}
@@ -263,6 +278,7 @@ const GMMapContent: React.FC<GMMapContentProps> = ({
         characters={effectiveCharacters}
         campaignName={campaign.name}
         onUpdateCharacter={updateCharacter}
+        onOpenCharacteristicsModal={() => setIsCharacteristicsModalOpen(true)}
       />
 
       {/* Diplomacy Management Modal (GM Only) */}
@@ -274,6 +290,15 @@ const GMMapContent: React.FC<GMMapContentProps> = ({
           diplomatic_relations: effectiveDiplomacy,
         }}
         onUpdateDiplomacy={updateDiplomacy}
+      />
+
+      {/* Player Characteristics & Perks Audit Modal (GM Only) */}
+      <PlayerCharacteristicsAuditModal
+        isOpen={isCharacteristicsModalOpen}
+        onClose={() => setIsCharacteristicsModalOpen(false)}
+        characters={effectiveCharacters}
+        campaignName={campaign.name}
+        onUpdateCharacter={updateCharacter}
       />
     </div>
   );

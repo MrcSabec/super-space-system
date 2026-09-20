@@ -88,6 +88,15 @@ export const CharacterWizard: React.FC<CharacterWizardProps> = ({
   const currentLore = FACTION_LOCAL_LORE[factionId] || FACTION_LOCAL_LORE.federation;
   const initialPillars = getFactionInitialPillars(factionId);
   const currentCensus = FACTION_INITIAL_CENSUS[factionId] || FACTION_INITIAL_CENSUS.federation;
+  const currentMilitaryTiers =
+    FACTION_INITIAL_MILITARY_TIERS[factionId] ||
+    FACTION_INITIAL_MILITARY_TIERS.federation;
+  const initialTotalTroops =
+    currentMilitaryTiers.lightInfantry +
+    currentMilitaryTiers.heavyInfantry +
+    currentMilitaryTiers.lightVehicles +
+    currentMilitaryTiers.heavyVehicles +
+    currentMilitaryTiers.eliteUnits;
   const pillar4Title = PILLAR_4_TITLES[factionId] || "A Federação";
 
   // Auto-fill leader title whenever faction or campaignName changes
@@ -205,7 +214,7 @@ export const CharacterWizard: React.FC<CharacterWizardProps> = ({
         military: initialPillars.military,
         politicalRelation: initialPillars.politicalRelation,
         populationCount: census.population,
-        militaryCount: census.military,
+        militaryCount: initialTotalTroops,
         galacticCredits: census.credits,
         resources: initialResources,
         precursorArtifacts: [],
@@ -523,13 +532,23 @@ export const CharacterWizard: React.FC<CharacterWizardProps> = ({
                     </span>
                   </div>
 
-                  {/* Militares */}
-                  <div className="p-2 rounded-xl bg-black/50 border border-rose-500/20">
+                  {/* Contagem de Tropas */}
+                  <div className="p-2 rounded-xl bg-black/50 border border-rose-500/20 flex flex-col justify-center">
                     <span className="text-[9px] text-slate-500 block uppercase">
-                      {currentCensus.militaryLabel || "Militares"}
+                      Contagem de Tropas
                     </span>
                     <span className="text-xs font-bold text-rose-300">
-                      {currentCensus.military.toLocaleString("pt-BR")}
+                      {initialTotalTroops} {initialTotalTroops === 1 ? "Tropa" : "Tropas"}
+                    </span>
+                    <span
+                      className="text-[8px] text-slate-400 font-mono block truncate mt-0.5"
+                      title={`${currentMilitaryTiers.lightInfantry} Inf. Leve, ${currentMilitaryTiers.heavyInfantry} Inf. Pesada, ${currentMilitaryTiers.lightVehicles} Veíc. Leves, ${currentMilitaryTiers.heavyVehicles} Veíc. Pesados, ${currentMilitaryTiers.eliteUnits} Elite`}
+                    >
+                      {currentMilitaryTiers.lightInfantry > 0 && `${currentMilitaryTiers.lightInfantry} Inf.L `}
+                      {currentMilitaryTiers.heavyInfantry > 0 && `${currentMilitaryTiers.heavyInfantry} Inf.P `}
+                      {currentMilitaryTiers.lightVehicles > 0 && `${currentMilitaryTiers.lightVehicles} V.Lev `}
+                      {currentMilitaryTiers.heavyVehicles > 0 && `${currentMilitaryTiers.heavyVehicles} V.Pes `}
+                      {currentMilitaryTiers.eliteUnits > 0 && `${currentMilitaryTiers.eliteUnits} Elite`}
                     </span>
                   </div>
                 </div>
