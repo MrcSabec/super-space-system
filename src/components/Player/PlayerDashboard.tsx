@@ -32,7 +32,7 @@ import { ResourceMeterGrid } from "@/components/Resources/ResourceMeterGrid";
 import { StarMapCanvas } from "@/components/StarMap/StarMapCanvas";
 import { CommandNotepadDrawer } from "./CommandNotepadDrawer";
 import { KnowledgeCatalog } from "./KnowledgeCatalog";
-import { saveMapState } from "@/lib/db";
+import { saveMapState, saveMapTroops } from "@/lib/db";
 import {
   Crown,
   Zap,
@@ -1426,6 +1426,9 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({
               mapState={mapState}
               onUpdateMapState={async (newState) => {
                 await saveMapState(campaign.id, newState);
+              }}
+              onUpdateTroops={async (newTroops) => {
+                await saveMapTroops(campaign.id, newTroops);
               }}
               isGM={false}
               currentUser={{ id: character.userId, username: character.username }}

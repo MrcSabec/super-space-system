@@ -346,113 +346,57 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                         </td>
 
                         {/* 2. Satisfação (Pilar 1) */}
-                        <td className={`px-1.5 py-2 text-center w-[11%] ${activePopover?.charId === char.id && activePopover.type === "satisfaction" ? "relative z-50" : "relative"}`}>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setActivePopover(
-                                activePopover?.type === "satisfaction" && activePopover.charId === char.id
-                                  ? null
-                                  : { type: "satisfaction", charId: char.id }
-                              )
-                            }
-                            className={`inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono font-bold transition-all border cursor-pointer hover:scale-105 active:scale-95 w-full max-w-[110px] ${satConfig.bg} ${satConfig.border}`}
-                            style={{ color: satConfig.color }}
-                            title="Clique para alterar Nível de Satisfação Civil"
-                          >
-                            <span className="truncate">{satConfig.label}</span>
-                            <ChevronDown className="w-2.5 h-2.5 opacity-60 flex-shrink-0" />
-                          </button>
-
-                          {/* Popover */}
-                          {activePopover?.type === "satisfaction" && activePopover.charId === char.id && (
-                            <div
-                              ref={popoverRef}
-                              className={`absolute z-50 left-1/2 -translate-x-1/2 w-44 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 ${
-                                isBottomRow ? "bottom-full mb-1.5" : "top-full mt-1.5"
-                              }`}
+                        <td className="px-1.5 py-2 text-center w-[11%]">
+                          <div className="relative inline-block w-full max-w-[110px]">
+                            <select
+                              value={satisfactionLvl}
+                              onChange={async (e) => {
+                                const val = Number(e.target.value);
+                                await updateCharacter(char.id, { satisfaction: val });
+                                showToast(`${char.characterName}: Satisfação -> ${SATISFACTION_LEVELS[val]?.label}`);
+                              }}
+                              className={`w-full px-2 py-1 pr-5 rounded-lg text-[11px] font-mono font-bold transition-all border cursor-pointer appearance-none text-center bg-[#0E121A] ${satConfig.border}`}
+                              style={{ color: satConfig.color }}
+                              title="Alterar Nível de Satisfação Civil"
                             >
-                              <div className="px-2 py-1 text-[9px] font-mono text-slate-400 border-b border-white/5 uppercase tracking-wider text-left">
-                                Satisfação Civil:
-                              </div>
                               {SATISFACTION_LEVELS.map((s) => (
-                                <button
-                                  key={s.level}
-                                  type="button"
-                                  onClick={async () => {
-                                    await updateCharacter(char.id, { satisfaction: s.level });
-                                    showToast(`${char.characterName}: Satisfação -> ${s.label}`);
-                                    setActivePopover(null);
-                                  }}
-                                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left text-xs font-mono transition-all ${
-                                    s.level === satisfactionLvl
-                                      ? "bg-white/15 text-white font-bold"
-                                      : "text-slate-300 hover:text-white hover:bg-white/10"
-                                  }`}
-                                >
-                                  <span style={{ color: s.color }}>{s.label}</span>
-                                  {s.level === satisfactionLvl && (
-                                    <Check className="w-3 h-3 text-emerald-400" />
-                                  )}
-                                </button>
+                                <option key={s.level} value={s.level} className="bg-[#0E121A] text-slate-200">
+                                  {s.label}
+                                </option>
                               ))}
-                            </div>
-                          )}
+                            </select>
+                            <ChevronDown
+                              className="w-2.5 h-2.5 opacity-60 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                              style={{ color: satConfig.color }}
+                            />
+                          </div>
                         </td>
 
                         {/* 3. Economia (Pilar 2) */}
-                        <td className={`px-1.5 py-2 text-center w-[11%] ${activePopover?.charId === char.id && activePopover.type === "economy" ? "relative z-50" : "relative"}`}>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setActivePopover(
-                                activePopover?.type === "economy" && activePopover.charId === char.id
-                                  ? null
-                                  : { type: "economy", charId: char.id }
-                              )
-                            }
-                            className={`inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono font-bold transition-all border cursor-pointer hover:scale-105 active:scale-95 w-full max-w-[110px] ${ecoConfig.bg} ${ecoConfig.border}`}
-                            style={{ color: ecoConfig.color }}
-                            title="Clique para alterar Nível Econômico"
-                          >
-                            <span className="truncate">{ecoConfig.label}</span>
-                            <ChevronDown className="w-2.5 h-2.5 opacity-60 flex-shrink-0" />
-                          </button>
-
-                          {/* Popover */}
-                          {activePopover?.type === "economy" && activePopover.charId === char.id && (
-                            <div
-                              ref={popoverRef}
-                              className={`absolute z-50 left-1/2 -translate-x-1/2 w-44 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 ${
-                                isBottomRow ? "bottom-full mb-1.5" : "top-full mt-1.5"
-                              }`}
+                        <td className="px-1.5 py-2 text-center w-[11%]">
+                          <div className="relative inline-block w-full max-w-[110px]">
+                            <select
+                              value={economyLvl}
+                              onChange={async (e) => {
+                                const val = Number(e.target.value);
+                                await updateCharacter(char.id, { economy: val });
+                                showToast(`${char.characterName}: Economia -> ${ECONOMY_LEVELS[val]?.label}`);
+                              }}
+                              className={`w-full px-2 py-1 pr-5 rounded-lg text-[11px] font-mono font-bold transition-all border cursor-pointer appearance-none text-center bg-[#0E121A] ${ecoConfig.border}`}
+                              style={{ color: ecoConfig.color }}
+                              title="Alterar Nível Econômico"
                             >
-                              <div className="px-2 py-1 text-[9px] font-mono text-slate-400 border-b border-white/5 uppercase tracking-wider text-left">
-                                Economia & Finanças:
-                              </div>
                               {ECONOMY_LEVELS.map((e) => (
-                                <button
-                                  key={e.level}
-                                  type="button"
-                                  onClick={async () => {
-                                    await updateCharacter(char.id, { economy: e.level });
-                                    showToast(`${char.characterName}: Economia -> ${e.label}`);
-                                    setActivePopover(null);
-                                  }}
-                                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left text-xs font-mono transition-all ${
-                                    e.level === economyLvl
-                                      ? "bg-white/15 text-white font-bold"
-                                      : "text-slate-300 hover:text-white hover:bg-white/10"
-                                  }`}
-                                >
-                                  <span style={{ color: e.color }}>{e.label}</span>
-                                  {e.level === economyLvl && (
-                                    <Check className="w-3 h-3 text-emerald-400" />
-                                  )}
-                                </button>
+                                <option key={e.level} value={e.level} className="bg-[#0E121A] text-slate-200">
+                                  {e.label}
+                                </option>
                               ))}
-                            </div>
-                          )}
+                            </select>
+                            <ChevronDown
+                              className="w-2.5 h-2.5 opacity-60 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                              style={{ color: ecoConfig.color }}
+                            />
+                          </div>
                         </td>
 
                         {/* 4. Cofre (Créditos) */}
@@ -592,59 +536,30 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                         </td>
 
                         {/* 6. Poderio Militar (Pilar 3) */}
-                        <td className={`px-1.5 py-2 text-center w-[12%] ${activePopover?.charId === char.id && activePopover.type === "military" ? "relative z-50" : "relative"}`}>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setActivePopover(
-                                activePopover?.type === "military" && activePopover.charId === char.id
-                                  ? null
-                                  : { type: "military", charId: char.id }
-                              )
-                            }
-                            className={`inline-flex items-center justify-center gap-1 px-1.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all border cursor-pointer hover:scale-105 active:scale-95 w-full max-w-[120px] ${milConfig.bg} ${milConfig.border}`}
-                            style={{ color: milConfig.color }}
-                            title="Clique para alterar Poderio Militar e ver divisões"
-                          >
-                            <span className="truncate">{milConfig.label}</span>
-                            <span className="text-[9px] opacity-75 flex-shrink-0">({totalDivs})</span>
-                            <ChevronDown className="w-2.5 h-2.5 opacity-60 flex-shrink-0" />
-                          </button>
-
-                          {/* Popover */}
-                          {activePopover?.type === "military" && activePopover.charId === char.id && (
-                            <div
-                              ref={popoverRef}
-                              className={`absolute z-50 left-1/2 -translate-x-1/2 w-48 bg-[#0E121A] border border-white/20 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 ${
-                                isBottomRow ? "bottom-full mb-1.5" : "top-full mt-1.5"
-                              }`}
+                        <td className="px-1.5 py-2 text-center w-[12%]">
+                          <div className="relative inline-block w-full max-w-[125px]">
+                            <select
+                              value={militaryLvl}
+                              onChange={async (e) => {
+                                const val = Number(e.target.value);
+                                await updateCharacter(char.id, { military: val });
+                                showToast(`${char.characterName}: Poderio -> ${MILITARY_LEVELS[val]?.label}`);
+                              }}
+                              className={`w-full px-1.5 py-1 pr-5 rounded-lg text-[11px] font-mono font-bold transition-all border cursor-pointer appearance-none text-center bg-[#0E121A] ${milConfig.border}`}
+                              style={{ color: milConfig.color }}
+                              title="Alterar Poderio Militar"
                             >
-                              <div className="px-2 py-1 text-[9px] font-mono text-slate-400 border-b border-white/5 uppercase tracking-wider text-left">
-                                Poderio Militar:
-                              </div>
                               {MILITARY_LEVELS.map((m) => (
-                                <button
-                                  key={m.level}
-                                  type="button"
-                                  onClick={async () => {
-                                    await updateCharacter(char.id, { military: m.level });
-                                    showToast(`${char.characterName}: Poderio -> ${m.label}`);
-                                    setActivePopover(null);
-                                  }}
-                                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left text-xs font-mono transition-all ${
-                                    m.level === militaryLvl
-                                      ? "bg-white/15 text-white font-bold"
-                                      : "text-slate-300 hover:text-white hover:bg-white/10"
-                                  }`}
-                                >
-                                  <span style={{ color: m.color }}>{m.label}</span>
-                                  {m.level === militaryLvl && (
-                                    <Check className="w-3 h-3 text-emerald-400" />
-                                  )}
-                                </button>
+                                <option key={m.level} value={m.level} className="bg-[#0E121A] text-slate-200">
+                                  {m.label} • {totalDivs} divs
+                                </option>
                               ))}
-                            </div>
-                          )}
+                            </select>
+                            <ChevronDown
+                              className="w-2.5 h-2.5 opacity-60 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                              style={{ color: milConfig.color }}
+                            />
+                          </div>
                         </td>
 
                         {/* 7. Conhecimento & Características */}

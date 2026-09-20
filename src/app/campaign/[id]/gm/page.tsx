@@ -52,6 +52,8 @@ const GMMapContent: React.FC<GMMapContentProps> = ({
     effectiveCharacters,
     effectiveDiplomacy,
     updateMapState,
+    updateTroops,
+    updatePlanets,
     updateCharacter,
     updateDiplomacy,
     applyBlueprint,
@@ -162,6 +164,8 @@ const GMMapContent: React.FC<GMMapContentProps> = ({
           campaignId={campaign.id}
           mapState={effectiveMapState}
           onUpdateMapState={updateMapState}
+          onUpdateTroops={updateTroops}
+          onUpdatePlanets={updatePlanets}
           isGM={true}
           currentUser={user}
           campaignFactions={campaign.allowedFactions}

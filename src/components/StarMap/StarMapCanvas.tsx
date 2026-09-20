@@ -31,6 +31,8 @@ interface StarMapCanvasProps {
   campaignId: string;
   mapState: MapState;
   onUpdateMapState?: (newState: MapState) => Promise<void>;
+  onUpdateTroops?: (troops: Troop[]) => Promise<void>;
+  onUpdatePlanets?: (planets: Planet[]) => Promise<void>;
   isGM?: boolean;
   currentUser?: { id: string; username: string } | null;
   character?: PlayerCharacter | null;
@@ -46,6 +48,8 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   campaignId: _campaignId,
   mapState,
   onUpdateMapState,
+  onUpdateTroops,
+  onUpdatePlanets,
   isGM = false,
   currentUser,
   character,
@@ -120,6 +124,24 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       updatedAt: Date.now(),
     }),
     [mapState, localPlanets, localTroops]
+  );
+
+  const commitTroops = useCallback(
+    (updatedTroops: Troop[]) => {
+      setLocalTroops(updatedTroops);
+      onUpdateTroops?.(updatedTroops);
+      onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
+    },
+    [buildFullMapState, onUpdateTroops, onUpdateMapState]
+  );
+
+  const commitPlanets = useCallback(
+    (updatedPlanets: Planet[]) => {
+      setLocalPlanets(updatedPlanets);
+      onUpdatePlanets?.(updatedPlanets);
+      onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+    },
+    [buildFullMapState, onUpdatePlanets, onUpdateMapState]
   );
   const [draggingPlanet, setDraggingPlanet] = useState<{
     id: string;
@@ -408,10 +430,8 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       };
 
       const updatedTroops = [...localTroops, newTroop];
-      setLocalTroops(updatedTroops);
+      commitTroops(updatedTroops);
       setSelectedTroop(newTroop);
-
-      onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
     } else if (activeTool === "add_planet" && isGM) {
       const orbitRadius = Math.round(Math.sqrt(wx * wx + wy * wy));
       let initialPhase = Math.round((Math.atan2(wy, wx) * 180) / Math.PI);
@@ -437,8 +457,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       };
 
       const updatedPlanets = [...localPlanets, newPlanet];
-      setLocalPlanets(updatedPlanets);
-      onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+      commitPlanets(updatedPlanets);
 
       setInspectedPlanet(newPlanet);
       setActiveTool("select");
@@ -545,7 +564,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
         const updatedTroops = localTroops.map((t) =>
           t.id === troop.id ? currentFinalTroop : t
         );
-        onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
+        commitTroops(updatedTroops);
       }
     }
 
@@ -557,18 +576,14 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   // ==========================================================================
   const handleUpdateSelectedTroop = (updated: Troop) => {
     const updatedTroops = localTroops.map((t) => (t.id === updated.id ? updated : t));
-    setLocalTroops(updatedTroops);
+    commitTroops(updatedTroops);
     setSelectedTroop(updated);
-
-    onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
   };
 
   const handleDeleteTroop = (id: string) => {
     const updatedTroops = localTroops.filter((t) => t.id !== id);
-    setLocalTroops(updatedTroops);
+    commitTroops(updatedTroops);
     setSelectedTroop(null);
-
-    onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
   };
 
   // Keyboard shortcut: Delete or Backspace removes the currently selected troop
@@ -738,7 +753,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
         const updatedPlanets = localPlanets.map((p) =>
           p.id === planet.id ? finalPlanet : p
         );
-        onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+        commitPlanets(updatedPlanets);
       }
     }
 
@@ -773,15 +788,12 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       };
     }
 
-    setLocalPlanets((prev) =>
-      prev.map((p) => (p.id === planet.id ? updatedPlanet : p))
-    );
     setInspectedPlanet(updatedPlanet);
 
     const updatedPlanets = localPlanets.map((p) =>
       p.id === planet.id ? updatedPlanet : p
     );
-    onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+    commitPlanets(updatedPlanets);
   };
 
   const handleStepPlanetPhase = (planet: Planet, step: number) => {
@@ -824,15 +836,12 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       };
     }
 
-    setLocalPlanets((prev) =>
-      prev.map((p) => (p.id === planet.id ? updatedPlanet : p))
-    );
     setInspectedPlanet(updatedPlanet);
 
     const updatedPlanets = localPlanets.map((p) =>
       p.id === planet.id ? updatedPlanet : p
     );
-    onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+    commitPlanets(updatedPlanets);
   };
 
   const handleRollPlanetInInspector = (planet: Planet) => {
@@ -852,13 +861,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       traits: stats.traits,
     };
     setInspectedPlanet(updatedPlanet);
-    setLocalPlanets((prev) =>
-      prev.map((p) => (p.id === planet.id ? updatedPlanet : p))
-    );
     const updatedPlanets = localPlanets.map((p) =>
       p.id === planet.id ? updatedPlanet : p
     );
-    onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+    commitPlanets(updatedPlanets);
   };
 
   const handleUpdatePlanetField = (planet: Planet, field: Partial<Planet>) => {
@@ -867,13 +873,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       ...field,
     };
     setInspectedPlanet(updatedPlanet);
-    setLocalPlanets((prev) =>
-      prev.map((p) => (p.id === planet.id ? updatedPlanet : p))
-    );
     const updatedPlanets = localPlanets.map((p) =>
       p.id === planet.id ? updatedPlanet : p
     );
-    onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+    commitPlanets(updatedPlanets);
   };
 
   const handleCyclePlanetResourceLevel = (planet: Planet, resourceName: string) => {
@@ -909,13 +912,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   const handleSaveModalEntity = (updated: Planet | Troop) => {
     if (selectedEntityType === "planet") {
       const updatedPlanet = updated as Planet;
-      setLocalPlanets((prev) =>
-        prev.map((p) => (p.id === updated.id ? updatedPlanet : p))
-      );
       const updatedPlanets = localPlanets.map((p) =>
         p.id === updated.id ? updatedPlanet : p
       );
-      onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+      commitPlanets(updatedPlanets);
       if (inspectedPlanet?.id === updated.id) {
         setInspectedPlanet(updatedPlanet);
       }
@@ -924,9 +924,8 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
 
   const handleDeleteModalEntity = (id: string, type: "planet" | "troop") => {
     if (type === "planet") {
-      setLocalPlanets((prev) => prev.filter((p) => p.id !== id));
       const filtered = localPlanets.filter((p) => p.id !== id);
-      onUpdateMapState?.(buildFullMapState(filtered, undefined));
+      commitPlanets(filtered);
       if (inspectedPlanet?.id === id) {
         setInspectedPlanet(null);
       }
@@ -1489,7 +1488,9 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
             const troopClass: TroopClass = troop.troopClass || "light_vehicle";
             const isSelected = selectedTroop?.id === troop.id;
             const isDraggingThis = draggingTroop?.id === troop.id;
-            const isConcealed = !(troop.visible_to || []).includes("all");
+            const isConcealed = !(troop.visible_to || []).some(
+              (v) => v.toLowerCase() === "all" || v.toLowerCase() === "todos"
+            );
             const payload = troop.payload || 0;
 
             return (
@@ -2357,14 +2358,11 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
                         anomalousOrbit: calibrated,
                         orbitalPhase: calibrated.orbitalPhase,
                       };
-                      setLocalPlanets((prev) =>
-                        prev.map((p) => (p.id === inspectedPlanet.id ? updated : p))
-                      );
                       setInspectedPlanet(updated);
                       const updatedPlanets = localPlanets.map((p) =>
                         p.id === inspectedPlanet.id ? updated : p
                       );
-                      onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+                      commitPlanets(updatedPlanets);
                     }}
                     className="px-2 py-0.5 rounded-lg bg-amber-500/25 hover:bg-amber-500/40 text-amber-200 border border-amber-400/50 font-bold transition-colors cursor-pointer"
                   >

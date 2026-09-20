@@ -170,6 +170,14 @@ export const MapControls: React.FC<MapControlsProps> = ({
   const [isToolboxCollapsed, setIsToolboxCollapsed] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
+  const isRevealedToAll = (list?: string[]): boolean => {
+    if (!list) return false;
+    return list.some((item) => {
+      const s = String(item).toLowerCase();
+      return s === "all" || s === "todos";
+    });
+  };
+
   // Handle Fog of War toggle for a specific faction or "all"
   const handleToggleVisibility = (target: "all" | FactionId) => {
     if (!selectedTroop || !onUpdateSelectedTroop) return;
@@ -177,10 +185,17 @@ export const MapControls: React.FC<MapControlsProps> = ({
 
     let nextList: string[];
     if (target === "all") {
-      if (currentList.includes("all")) {
-        nextList = ["dm", selectedTroop.ownerId || "", selectedTroop.factionId];
+      if (isRevealedToAll(currentList)) {
+        nextList = currentList.filter((item) => {
+          const s = String(item).toLowerCase();
+          return s !== "all" && s !== "todos";
+        });
+        if (!nextList.includes("dm")) nextList.push("dm");
+        if (selectedTroop.ownerId && !nextList.includes(selectedTroop.ownerId)) {
+          nextList.push(selectedTroop.ownerId);
+        }
       } else {
-        nextList = Array.from(new Set([...currentList, "all"]));
+        nextList = Array.from(new Set([...currentList, "all", "Todos"]));
       }
     } else {
       if (currentList.includes(target)) {
@@ -926,7 +941,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
                   <Eye className="w-3 h-3 text-sky-400" />
                   Névoa de Guerra (Visibilidade)
                 </span>
-                {(selectedTroop.visible_to || []).includes("all") ? (
+                {isRevealedToAll(selectedTroop.visible_to) ? (
                   <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
                     Visível a Todos
                   </span>
@@ -943,12 +958,12 @@ export const MapControls: React.FC<MapControlsProps> = ({
                 type="button"
                 onClick={() => handleToggleVisibility("all")}
                 className={`w-full py-1.5 px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-2 border transition-all ${
-                  (selectedTroop.visible_to || []).includes("all")
+                  isRevealedToAll(selectedTroop.visible_to)
                     ? "bg-emerald-500/20 text-emerald-200 border-emerald-500/40 hover:bg-emerald-500/30"
                     : "bg-sky-500/15 text-sky-300 border-sky-500/30 hover:bg-sky-500/25"
                 }`}
               >
-                {(selectedTroop.visible_to || []).includes("all") ? (
+                {isRevealedToAll(selectedTroop.visible_to) ? (
                   <>
                     <EyeOff className="w-3.5 h-3.5" />
                     <span>Ocultar dos Adversários</span>
@@ -969,7 +984,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
                 <div className="grid grid-cols-2 gap-1 max-h-28 overflow-y-auto pr-0.5">
                   {availableFactions.map((f) => {
                     const isVisibleToFaction =
-                      (selectedTroop.visible_to || []).includes("all") ||
+                      isRevealedToAll(selectedTroop.visible_to) ||
                       (selectedTroop.visible_to || []).includes(f.id);
                     return (
                       <button

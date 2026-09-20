@@ -3,12 +3,13 @@
 import React, { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Campaign, MapState, PlayerCharacter } from "@/types/sss";
+import { Campaign, MapState, PlayerCharacter, Troop } from "@/types/sss";
 import {
   getCampaign,
   subscribeCampaign,
   subscribeMapState,
   saveMapState,
+  saveMapTroops,
   subscribePlayerCharacter,
   savePlayerCharacter,
 } from "@/lib/db";
@@ -139,7 +140,23 @@ export default function PlayerCampaignPage({
   const handleUpdateMapState = async (newState: MapState) => {
     setMapState(newState);
     if (campaign) {
-      await saveMapState(campaign.id, newState);
+      try {
+        await saveMapState(campaign.id, newState);
+      } catch (err) {
+        console.error("Erro ao salvar estado geral do mapa:", err);
+      }
+    }
+  };
+
+  // Granular troop update handler (prevents planet overwrites)
+  const handleUpdateTroops = async (newTroops: Troop[]) => {
+    setMapState((prev) => ({ ...prev, troops: newTroops, updatedAt: Date.now() }));
+    if (campaign) {
+      try {
+        await saveMapTroops(campaign.id, newTroops);
+      } catch (err) {
+        console.error("Erro ao salvar tropas no Firestore:", err);
+      }
     }
   };
 
@@ -321,6 +338,7 @@ export default function PlayerCampaignPage({
                 campaignId={campaign.id}
                 mapState={mapState}
                 onUpdateMapState={handleUpdateMapState}
+                onUpdateTroops={handleUpdateTroops}
                 isGM={false}
                 currentUser={user}
                 character={character}

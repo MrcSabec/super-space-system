@@ -8,8 +8,8 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { MapState, PlayerCharacter, Campaign } from "@/types/sss";
-import { commitBlueprintBatch, saveMapState, savePlayerCharacter, updateCampaignDiplomacy } from "@/lib/db";
+import { MapState, PlayerCharacter, Campaign, Troop, Planet } from "@/types/sss";
+import { commitBlueprintBatch, saveMapState, saveMapTroops, saveMapPlanets, savePlayerCharacter, updateCampaignDiplomacy } from "@/lib/db";
 
 export type GameMode = "LIVE" | "BLUEPRINT";
 
@@ -28,6 +28,8 @@ interface GameStateContextType {
 
   // Intercepted mutation handlers
   updateMapState: (newMap: MapState) => Promise<void>;
+  updateTroops: (troops: Troop[]) => Promise<void>;
+  updatePlanets: (planets: Planet[]) => Promise<void>;
   updateCharacter: (char: PlayerCharacter) => Promise<void>;
   updateDiplomacy: (relations: Record<string, string>) => Promise<void>;
 
@@ -190,6 +192,50 @@ export const GameStateProvider: React.FC<GameStateProviderProps> = ({
     [isLive, campaignId, onServerMapStateChange]
   );
 
+  // Granular troop update (never overwrites planets)
+  const updateTroops = useCallback(
+    async (troops: Troop[]) => {
+      if (isLive) {
+        const nextMap: MapState = {
+          ...serverMapState,
+          troops,
+          updatedAt: Date.now(),
+        };
+        onServerMapStateChange?.(nextMap);
+        await saveMapTroops(campaignId, troops);
+      } else {
+        setDraftMapState((prev) => ({
+          ...(prev ?? serverMapState),
+          troops,
+          updatedAt: Date.now(),
+        }));
+      }
+    },
+    [isLive, campaignId, serverMapState, onServerMapStateChange]
+  );
+
+  // Granular planet update (never overwrites troops)
+  const updatePlanets = useCallback(
+    async (planets: Planet[]) => {
+      if (isLive) {
+        const nextMap: MapState = {
+          ...serverMapState,
+          planets,
+          updatedAt: Date.now(),
+        };
+        onServerMapStateChange?.(nextMap);
+        await saveMapPlanets(campaignId, planets);
+      } else {
+        setDraftMapState((prev) => ({
+          ...(prev ?? serverMapState),
+          planets,
+          updatedAt: Date.now(),
+        }));
+      }
+    },
+    [isLive, campaignId, serverMapState, onServerMapStateChange]
+  );
+
   // Intercepted Mutation: Character
   const updateCharacter = useCallback(
     async (char: PlayerCharacter) => {
@@ -324,6 +370,8 @@ export const GameStateProvider: React.FC<GameStateProviderProps> = ({
         effectiveCharacters,
         effectiveDiplomacy,
         updateMapState,
+        updateTroops,
+        updatePlanets,
         updateCharacter,
         updateDiplomacy,
         applyBlueprint,

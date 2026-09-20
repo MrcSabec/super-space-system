@@ -527,7 +527,12 @@ export function subscribeMapState(
         doc(db, "campaign_maps", campaignId),
         (docSnap) => {
           if (docSnap.exists()) {
-            onUpdate(docSnap.data() as MapState);
+            const raw = docSnap.data() as Partial<MapState>;
+            onUpdate({
+              planets: Array.isArray(raw.planets) ? raw.planets : [],
+              troops: Array.isArray(raw.troops) ? raw.troops : [],
+              updatedAt: raw.updatedAt || Date.now(),
+            });
           }
         },
         (err) => {
@@ -593,14 +598,18 @@ export function sanitizeForFirestore<T>(data: T): T {
 }
 
 export async function saveMapState(campaignId: string, state: MapState): Promise<void> {
-  const updatedState = { ...state, updatedAt: Date.now() };
+  const updatedState = {
+    planets: state.planets || [],
+    troops: state.troops || [],
+    updatedAt: Date.now(),
+  };
   const sanitized = sanitizeForFirestore(updatedState);
 
   if (isFirebaseConfigured() && db) {
     try {
-      await setDoc(doc(db, "campaign_maps", campaignId), sanitized);
+      await setDoc(doc(db, "campaign_maps", campaignId), sanitized, { merge: true });
       try {
-        await updateDoc(doc(db, "campaigns", campaignId), { mapState: sanitized });
+        await setDoc(doc(db, "campaigns", campaignId), { mapState: sanitized }, { merge: true });
       } catch {}
       return;
     } catch (err) {
@@ -624,6 +633,112 @@ export async function saveMapState(campaignId: string, state: MapState): Promise
   const maps = getLocalItem<Record<string, MapState>>(LS_MAPS, {});
   maps[campaignId] = updatedState;
   setLocalItem(LS_MAPS, maps);
+
+  if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+    const bc = new BroadcastChannel(`sss_map_${campaignId}`);
+    bc.postMessage(updatedState);
+    bc.close();
+  }
+}
+
+/**
+ * Persists troops separately using Firestore merge so updating planets
+ * NEVER wipes out troops, and adding/moving troops never affects planets.
+ */
+export async function saveMapTroops(campaignId: string, troops: Troop[]): Promise<void> {
+  const sanitized = sanitizeForFirestore(troops || []);
+  const now = Date.now();
+
+  if (isFirebaseConfigured() && db) {
+    try {
+      await setDoc(
+        doc(db, "campaign_maps", campaignId),
+        { troops: sanitized, updatedAt: now },
+        { merge: true }
+      );
+      try {
+        await setDoc(
+          doc(db, "campaigns", campaignId),
+          { mapState: { troops: sanitized, updatedAt: now } },
+          { merge: true }
+        );
+      } catch {}
+      return;
+    } catch (err) {
+      console.warn("Firestore saveMapTroops error, saving locally:", err);
+    }
+  }
+
+  // Fallback to local store
+  const maps = getLocalItem<Record<string, MapState>>(LS_MAPS, {});
+  const current = maps[campaignId] || { planets: [], troops: [], updatedAt: now };
+  const updatedState: MapState = { ...current, troops, updatedAt: now };
+  maps[campaignId] = updatedState;
+  setLocalItem(LS_MAPS, maps);
+
+  try {
+    await fetch("/api/store", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save_map",
+        payload: { campaignId, mapState: updatedState },
+      }),
+    });
+  } catch {}
+
+  if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+    const bc = new BroadcastChannel(`sss_map_${campaignId}`);
+    bc.postMessage(updatedState);
+    bc.close();
+  }
+}
+
+/**
+ * Persists planets separately using Firestore merge so updating planets
+ * NEVER wipes out player troops.
+ */
+export async function saveMapPlanets(campaignId: string, planets: Planet[]): Promise<void> {
+  const sanitized = sanitizeForFirestore(planets || []);
+  const now = Date.now();
+
+  if (isFirebaseConfigured() && db) {
+    try {
+      await setDoc(
+        doc(db, "campaign_maps", campaignId),
+        { planets: sanitized, updatedAt: now },
+        { merge: true }
+      );
+      try {
+        await setDoc(
+          doc(db, "campaigns", campaignId),
+          { mapState: { planets: sanitized, updatedAt: now } },
+          { merge: true }
+        );
+      } catch {}
+      return;
+    } catch (err) {
+      console.warn("Firestore saveMapPlanets error, saving locally:", err);
+    }
+  }
+
+  // Fallback
+  const maps = getLocalItem<Record<string, MapState>>(LS_MAPS, {});
+  const current = maps[campaignId] || { planets: [], troops: [], updatedAt: now };
+  const updatedState: MapState = { ...current, planets, updatedAt: now };
+  maps[campaignId] = updatedState;
+  setLocalItem(LS_MAPS, maps);
+
+  try {
+    await fetch("/api/store", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save_map",
+        payload: { campaignId, mapState: updatedState },
+      }),
+    });
+  } catch {}
 
   if (typeof window !== "undefined" && "BroadcastChannel" in window) {
     const bc = new BroadcastChannel(`sss_map_${campaignId}`);
