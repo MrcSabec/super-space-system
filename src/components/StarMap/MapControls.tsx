@@ -504,8 +504,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
                     {TROOP_CLASSES.map((cls) => {
                       const isSelected = selectedTroopClass === cls.id;
                       const quota = troopQuotas?.[cls.id];
-                      const isNeutralGM = isGM && selectedFactionForAdd === "neutral";
-                      const isExhausted = isNeutralGM ? false : quota ? quota.available <= 0 : false;
+                      const isExhausted = isGM ? false : quota ? quota.available <= 0 : false;
                       const flavor = factionTroopFlavors?.[
                         cls.id === "light_infantry"
                           ? "lightInfantry"
@@ -559,7 +558,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
                             )}
                           </div>
 
-                          {isNeutralGM ? (
+                          {isGM ? (
                             <div className="flex items-center gap-1.5 flex-shrink-0">
                               <span className="text-[10px] font-mono font-bold text-amber-400">
                                 {quota?.placed ?? 0} / ∞

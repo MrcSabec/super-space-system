@@ -129,8 +129,11 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   const commitTroops = useCallback(
     (updatedTroops: Troop[]) => {
       setLocalTroops(updatedTroops);
-      onUpdateTroops?.(updatedTroops);
-      onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
+      if (onUpdateTroops) {
+        onUpdateTroops(updatedTroops);
+      } else {
+        onUpdateMapState?.(buildFullMapState(undefined, updatedTroops));
+      }
     },
     [buildFullMapState, onUpdateTroops, onUpdateMapState]
   );
@@ -138,8 +141,11 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   const commitPlanets = useCallback(
     (updatedPlanets: Planet[]) => {
       setLocalPlanets(updatedPlanets);
-      onUpdatePlanets?.(updatedPlanets);
-      onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+      if (onUpdatePlanets) {
+        onUpdatePlanets(updatedPlanets);
+      } else {
+        onUpdateMapState?.(buildFullMapState(updatedPlanets, undefined));
+      }
     },
     [buildFullMapState, onUpdatePlanets, onUpdateMapState]
   );
@@ -381,25 +387,25 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
       const targetFactionId = isGM
         ? selectedFactionForAdd
         : character?.factionId || "neutral";
-      const isNeutralBypass = isGM && targetFactionId === "neutral";
+      const isQuotaBypassed = isGM || targetFactionId === "neutral";
 
       const quota = troopQuotas[selectedTroopClass];
       const classConfig =
         TROOP_CLASSES.find((c) => c.id === selectedTroopClass) || TROOP_CLASSES[0];
 
-      if (!isNeutralBypass && quota && quota.placed >= quota.max) {
+      if (!isQuotaBypassed && quota && quota.placed >= quota.max) {
         setQuotaNotice(
           `Limite de mobilização atingido! Sua facção já possui ${quota.placed}/${quota.max} de ${classConfig.label} no mapa. Remova uma unidade existente do mapa para reposicioná-la.`
         );
         return;
       }
 
-      const ownerId = isNeutralBypass
-        ? "neutral"
+      const ownerId = isGM
+        ? "dm"
         : currentUser?.id ||
           character?.userId ||
           currentUser?.username ||
-          (isGM ? "dm" : "player");
+          "player";
 
       let defaultName = `${classConfig.label} ${(localTroops.length + 1)}`;
       if (selectedTroopClass === "elite") {
@@ -411,8 +417,8 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
         selectedTroopClass === "heavy_vehicle" ||
         (selectedTroopClass === "elite" && isAirspace);
 
-      const visibleToList = isNeutralBypass
-        ? ["Todos", "all", "dm", "neutral"]
+      const visibleToList = isGM
+        ? ["Todos", "all", "dm", "neutral", targetFactionId]
         : Array.from(new Set(["all", "Todos", "dm", ownerId, targetFactionId]));
 
       const newTroop: Troop = {

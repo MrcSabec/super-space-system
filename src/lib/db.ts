@@ -656,13 +656,6 @@ export async function saveMapTroops(campaignId: string, troops: Troop[]): Promis
         { troops: sanitized, updatedAt: now },
         { merge: true }
       );
-      try {
-        await setDoc(
-          doc(db, "campaigns", campaignId),
-          { mapState: { troops: sanitized, updatedAt: now } },
-          { merge: true }
-        );
-      } catch {}
       return;
     } catch (err) {
       console.warn("Firestore saveMapTroops error, saving locally:", err);
@@ -681,8 +674,8 @@ export async function saveMapTroops(campaignId: string, troops: Troop[]): Promis
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "save_map",
-        payload: { campaignId, mapState: updatedState },
+        action: "save_map_troops",
+        payload: { campaignId, troops: sanitized },
       }),
     });
   } catch {}
@@ -709,13 +702,6 @@ export async function saveMapPlanets(campaignId: string, planets: Planet[]): Pro
         { planets: sanitized, updatedAt: now },
         { merge: true }
       );
-      try {
-        await setDoc(
-          doc(db, "campaigns", campaignId),
-          { mapState: { planets: sanitized, updatedAt: now } },
-          { merge: true }
-        );
-      } catch {}
       return;
     } catch (err) {
       console.warn("Firestore saveMapPlanets error, saving locally:", err);
@@ -734,8 +720,8 @@ export async function saveMapPlanets(campaignId: string, planets: Planet[]): Pro
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "save_map",
-        payload: { campaignId, mapState: updatedState },
+        action: "save_map_planets",
+        payload: { campaignId, planets: sanitized },
       }),
     });
   } catch {}

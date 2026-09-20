@@ -148,6 +148,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, map: mapState });
     }
 
+    if (action === "save_map_troops") {
+      const { campaignId, troops } = payload;
+      const current = (store.maps[campaignId] || { planets: [], troops: [] }) as Record<string, unknown>;
+      const nextMap = {
+        ...current,
+        troops,
+        updatedAt: Date.now(),
+      };
+      store.maps[campaignId] = nextMap;
+      saveStore(store);
+      return NextResponse.json({ success: true, map: nextMap });
+    }
+
+    if (action === "save_map_planets") {
+      const { campaignId, planets } = payload;
+      const current = (store.maps[campaignId] || { planets: [], troops: [] }) as Record<string, unknown>;
+      const nextMap = {
+        ...current,
+        planets,
+        updatedAt: Date.now(),
+      };
+      store.maps[campaignId] = nextMap;
+      saveStore(store);
+      return NextResponse.json({ success: true, map: nextMap });
+    }
+
     if (action === "save_character") {
       const char = payload;
       const key = `${char.campaignId}_${(char.username || "").trim().toLowerCase()}`;

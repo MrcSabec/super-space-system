@@ -62,6 +62,11 @@ type ActiveCellPopover =
   | { type: "perks"; charId: string }
   | null;
 
+export interface PillarSelectorTarget {
+  char: PlayerCharacter;
+  pillar: "satisfaction" | "economy" | "military";
+}
+
 export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
   isOpen,
   onClose,
@@ -71,6 +76,7 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
   onOpenCharacteristicsModal,
 }) => {
   const [activePopover, setActivePopover] = useState<ActiveCellPopover>(null);
+  const [pillarSelector, setPillarSelector] = useState<PillarSelectorTarget | null>(null);
   const [editingCreditsId, setEditingCreditsId] = useState<string | null>(null);
   const [creditsInputVal, setCreditsInputVal] = useState<string>("");
   const [editingPopId, setEditingPopId] = useState<string | null>(null);
@@ -346,56 +352,90 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                         </td>
 
                         {/* 2. Satisfação (Pilar 1) */}
-                        <td className="px-1.5 py-2 text-center w-[11%]">
-                          <div className="relative inline-block w-full max-w-[110px]">
-                            <select
-                              value={satisfactionLvl}
-                              onChange={async (e) => {
-                                const val = Number(e.target.value);
-                                await updateCharacter(char.id, { satisfaction: val });
-                                showToast(`${char.characterName}: Satisfação -> ${SATISFACTION_LEVELS[val]?.label}`);
+                        <td className="px-1 py-2 text-center w-[11%]">
+                          <div className="flex items-center justify-center gap-1 w-full max-w-[130px] mx-auto">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = Math.max(0, satisfactionLvl - 1);
+                                await updateCharacter(char.id, { satisfaction: next });
+                                showToast(`${char.characterName}: Satisfação -> ${SATISFACTION_LEVELS[next]?.label}`);
                               }}
-                              className={`w-full px-2 py-1 pr-5 rounded-lg text-[11px] font-mono font-bold transition-all border cursor-pointer appearance-none text-center bg-[#0E121A] ${satConfig.border}`}
-                              style={{ color: satConfig.color }}
-                              title="Alterar Nível de Satisfação Civil"
+                              disabled={satisfactionLvl === 0}
+                              title="Diminuir Satisfação"
+                              className="w-5 h-6 rounded-md bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs flex-shrink-0 cursor-pointer"
                             >
-                              {SATISFACTION_LEVELS.map((s) => (
-                                <option key={s.level} value={s.level} className="bg-[#0E121A] text-slate-200">
-                                  {s.label}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown
-                              className="w-2.5 h-2.5 opacity-60 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                              <Minus className="w-3 h-3" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setPillarSelector({ char, pillar: "satisfaction" })}
+                              className={`flex-1 min-w-[70px] px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all border flex items-center justify-center gap-1 shadow-sm hover:scale-[1.03] hover:brightness-125 cursor-pointer ${satConfig.bg} ${satConfig.border}`}
                               style={{ color: satConfig.color }}
-                            />
+                              title="Clique para abrir seletor prioritário de Satisfação"
+                            >
+                              <span className="truncate">{satConfig.label}</span>
+                              <ChevronDown className="w-3 h-3 opacity-60 flex-shrink-0" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = Math.min(4, satisfactionLvl + 1);
+                                await updateCharacter(char.id, { satisfaction: next });
+                                showToast(`${char.characterName}: Satisfação -> ${SATISFACTION_LEVELS[next]?.label}`);
+                              }}
+                              disabled={satisfactionLvl === 4}
+                              title="Aumentar Satisfação"
+                              className="w-5 h-6 rounded-md bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs flex-shrink-0 cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
                           </div>
                         </td>
 
                         {/* 3. Economia (Pilar 2) */}
-                        <td className="px-1.5 py-2 text-center w-[11%]">
-                          <div className="relative inline-block w-full max-w-[110px]">
-                            <select
-                              value={economyLvl}
-                              onChange={async (e) => {
-                                const val = Number(e.target.value);
-                                await updateCharacter(char.id, { economy: val });
-                                showToast(`${char.characterName}: Economia -> ${ECONOMY_LEVELS[val]?.label}`);
+                        <td className="px-1 py-2 text-center w-[11%]">
+                          <div className="flex items-center justify-center gap-1 w-full max-w-[130px] mx-auto">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = Math.max(0, economyLvl - 1);
+                                await updateCharacter(char.id, { economy: next });
+                                showToast(`${char.characterName}: Economia -> ${ECONOMY_LEVELS[next]?.label}`);
                               }}
-                              className={`w-full px-2 py-1 pr-5 rounded-lg text-[11px] font-mono font-bold transition-all border cursor-pointer appearance-none text-center bg-[#0E121A] ${ecoConfig.border}`}
-                              style={{ color: ecoConfig.color }}
-                              title="Alterar Nível Econômico"
+                              disabled={economyLvl === 0}
+                              title="Diminuir Economia"
+                              className="w-5 h-6 rounded-md bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs flex-shrink-0 cursor-pointer"
                             >
-                              {ECONOMY_LEVELS.map((e) => (
-                                <option key={e.level} value={e.level} className="bg-[#0E121A] text-slate-200">
-                                  {e.label}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown
-                              className="w-2.5 h-2.5 opacity-60 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                              <Minus className="w-3 h-3" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setPillarSelector({ char, pillar: "economy" })}
+                              className={`flex-1 min-w-[70px] px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all border flex items-center justify-center gap-1 shadow-sm hover:scale-[1.03] hover:brightness-125 cursor-pointer ${ecoConfig.bg} ${ecoConfig.border}`}
                               style={{ color: ecoConfig.color }}
-                            />
+                              title="Clique para abrir seletor prioritário de Economia"
+                            >
+                              <span className="truncate">{ecoConfig.label}</span>
+                              <ChevronDown className="w-3 h-3 opacity-60 flex-shrink-0" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = Math.min(4, economyLvl + 1);
+                                await updateCharacter(char.id, { economy: next });
+                                showToast(`${char.characterName}: Economia -> ${ECONOMY_LEVELS[next]?.label}`);
+                              }}
+                              disabled={economyLvl === 4}
+                              title="Aumentar Economia"
+                              className="w-5 h-6 rounded-md bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs flex-shrink-0 cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
                           </div>
                         </td>
 
@@ -536,29 +576,46 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
                         </td>
 
                         {/* 6. Poderio Militar (Pilar 3) */}
-                        <td className="px-1.5 py-2 text-center w-[12%]">
-                          <div className="relative inline-block w-full max-w-[125px]">
-                            <select
-                              value={militaryLvl}
-                              onChange={async (e) => {
-                                const val = Number(e.target.value);
-                                await updateCharacter(char.id, { military: val });
-                                showToast(`${char.characterName}: Poderio -> ${MILITARY_LEVELS[val]?.label}`);
+                        <td className="px-1 py-2 text-center w-[12%]">
+                          <div className="flex items-center justify-center gap-1 w-full max-w-[145px] mx-auto">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = Math.max(0, militaryLvl - 1);
+                                await updateCharacter(char.id, { military: next });
+                                showToast(`${char.characterName}: Poderio -> ${MILITARY_LEVELS[next]?.label}`);
                               }}
-                              className={`w-full px-1.5 py-1 pr-5 rounded-lg text-[11px] font-mono font-bold transition-all border cursor-pointer appearance-none text-center bg-[#0E121A] ${milConfig.border}`}
-                              style={{ color: milConfig.color }}
-                              title="Alterar Poderio Militar"
+                              disabled={militaryLvl === 0}
+                              title="Diminuir Poderio"
+                              className="w-5 h-6 rounded-md bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs flex-shrink-0 cursor-pointer"
                             >
-                              {MILITARY_LEVELS.map((m) => (
-                                <option key={m.level} value={m.level} className="bg-[#0E121A] text-slate-200">
-                                  {m.label} • {totalDivs} divs
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown
-                              className="w-2.5 h-2.5 opacity-60 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                              <Minus className="w-3 h-3" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setPillarSelector({ char, pillar: "military" })}
+                              className={`flex-1 min-w-[75px] px-2 py-1.5 rounded-xl text-xs font-mono font-bold transition-all border flex items-center justify-center gap-1 shadow-sm hover:scale-[1.03] hover:brightness-125 cursor-pointer ${milConfig.bg} ${milConfig.border}`}
                               style={{ color: milConfig.color }}
-                            />
+                              title="Clique para abrir seletor prioritário de Poderio Militar"
+                            >
+                              <span className="truncate">{milConfig.label} ({totalDivs})</span>
+                              <ChevronDown className="w-3 h-3 opacity-60 flex-shrink-0" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = Math.min(4, militaryLvl + 1);
+                                await updateCharacter(char.id, { military: next });
+                                showToast(`${char.characterName}: Poderio -> ${MILITARY_LEVELS[next]?.label}`);
+                              }}
+                              disabled={militaryLvl === 4}
+                              title="Aumentar Poderio"
+                              className="w-5 h-6 rounded-md bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs flex-shrink-0 cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
                           </div>
                         </td>
 
@@ -813,6 +870,194 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* ===================================================================
+          MODAL PRIORITÁRIO DE SELEÇÃO DE PILARES (OVERLAY Z-[100])
+          Garante paddings generosos, visibilidade total e sem corte do HUD
+         =================================================================== */}
+      {pillarSelector && (() => {
+        const char = pillarSelector.char;
+        const fac = getFaction(char.factionId);
+        const isSat = pillarSelector.pillar === "satisfaction";
+        const isEco = pillarSelector.pillar === "economy";
+        const isMil = pillarSelector.pillar === "military";
+
+        const currentLvl = isSat
+          ? (char.satisfaction ?? 2)
+          : isEco
+          ? (char.economy ?? 2)
+          : (char.military ?? 2);
+
+        const title = isSat
+          ? "Satisfação da População"
+          : isEco
+          ? "Economia & Abastecimento"
+          : "Poderio Militar";
+
+        const subtitle = isSat
+          ? "Mede o contentamento civil, a coesão social e a estabilidade governamental desta facção."
+          : isEco
+          ? "Mede a capacidade logística, equilíbrio de suprimentos e saúde financeira das colônias."
+          : "Mede o estado e prontidão operacional das forças armadas da facção no sistema.";
+
+        const levels = isSat
+          ? SATISFACTION_LEVELS
+          : isEco
+          ? ECONOMY_LEVELS
+          : MILITARY_LEVELS;
+
+        const loreDescriptions: Record<string, Record<number, string>> = {
+          satisfaction: {
+            4: "Excelente: População inspirada e leal. Máxima coesão social e ordem pública inabalável.",
+            3: "Estável: Apoio popular sólido. Colônias produtivas sem atritos civis relevantes.",
+            2: "Neutra: Equilíbrio funcional. Cidadãos cooperam no padrão sem entusiasmo ou protestos.",
+            1: "Tensa: Murmúrios de descontentamento. Reclamações contra medidas e atrito social perceptível.",
+            0: "Colapso: Revoltas civis generalizadas, greves massivas e risco iminente de motim.",
+          },
+          economy: {
+            4: "Abundante: Superávit vigoroso, infraestrutura impecável e comércio galáctico próspero.",
+            3: "Suficiente: Cadeias de suprimento equilibradas, consumo estável e sem gargalos logísticos.",
+            2: "Neutra: Recursos básicos atendidos estritamente, sem folgas para despesas supérfluas.",
+            1: "Racionamento: Escassez de insumos, inflação de créditos e tensão nas linhas de suprimento.",
+            0: "Fome: Desabastecimento catastrófico, paralisação industrial e crise humanitária aguda.",
+          },
+          military: {
+            4: "Supremacia: Forças armadas temidas, frotas em prontidão máxima e domínio hegemônico.",
+            3: "Seguro: Defesas coordenadas, patrulhas ativas e capacidade pronta de resposta tática.",
+            2: "Neutro: Contingente regular suficiente para manter a ordem e a defesa básica.",
+            1: "Pressionado: Contingente desfalcado, perdas materiais recentes e dificuldade de reposição.",
+            0: "Dizimado: Ruína militar completa. Sem capacidade defensiva, território indefeso.",
+          },
+        };
+
+        const descriptions = loreDescriptions[pillarSelector.pillar];
+
+        return (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+            onClick={() => setPillarSelector(null)}
+          >
+            <div
+              className="relative w-full max-w-xl bg-[#0B0F17] border border-white/20 rounded-3xl p-5 sm:p-7 shadow-[0_0_60px_rgba(0,0,0,0.9)] space-y-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-3 h-3 rounded-full shadow-md"
+                      style={{ backgroundColor: fac.color }}
+                    />
+                    <span
+                      className="text-xs font-mono font-bold uppercase tracking-wider"
+                      style={{ color: fac.color }}
+                    >
+                      {fac.name}
+                    </span>
+                    <span className="text-slate-500 text-xs">•</span>
+                    <span className="text-xs font-mono text-slate-300">
+                      {char.characterName} ({char.leaderTitle})
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg sm:text-xl font-bold text-white font-sans flex items-center gap-2">
+                    <Sliders className="w-5 h-5 text-amber-400" />
+                    {title}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-mono leading-relaxed">
+                    {subtitle}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setPillarSelector(null)}
+                  className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer flex-shrink-0"
+                  title="Fechar Seletor"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Levels Selection List (Padded Buttons with Generous Spacing) */}
+              <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+                {[...levels].reverse().map((lvl) => {
+                  const isCurrent = currentLvl === lvl.level;
+                  const desc = descriptions[lvl.level];
+
+                  return (
+                    <button
+                      key={lvl.level}
+                      type="button"
+                      onClick={async () => {
+                        await updateCharacter(char.id, { [pillarSelector.pillar]: lvl.level });
+                        showToast(`${char.characterName}: ${title} -> ${lvl.label}`);
+                        setPillarSelector(null);
+                      }}
+                      className={`w-full p-4 rounded-2xl text-left font-mono transition-all border flex items-start justify-between gap-3 cursor-pointer group ${
+                        isCurrent
+                          ? "bg-white/10 border-white/40 ring-2 ring-white/20 shadow-lg scale-[1.01]"
+                          : "bg-black/30 border-white/5 hover:bg-white/5 hover:border-white/20 hover:scale-[1.01]"
+                      }`}
+                      style={{
+                        borderColor: isCurrent ? lvl.color : undefined,
+                      }}
+                    >
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: lvl.color }}
+                          />
+                          <span
+                            className="text-sm font-bold tracking-wide"
+                            style={{ color: lvl.color }}
+                          >
+                            Nível {lvl.level}: {lvl.label}
+                          </span>
+                          {isCurrent && (
+                            <span className="px-2 py-0.5 rounded-md bg-white/15 text-[10px] font-bold text-white uppercase tracking-wider border border-white/20">
+                              Atual
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                          {desc}
+                        </p>
+                      </div>
+
+                      <div className="flex-shrink-0 pt-0.5">
+                        {isCurrent ? (
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-black font-bold"
+                            style={{ backgroundColor: lvl.color }}
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </div>
+                        ) : (
+                          <div className="w-6 h-6 rounded-full border border-white/20 group-hover:border-white/50 transition-colors" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Close / Confirm Footer */}
+              <div className="flex items-center justify-between pt-2 border-t border-white/10 text-xs font-mono text-slate-400">
+                <span>Clique em qualquer nível para aplicar instantaneamente</span>
+                <button
+                  type="button"
+                  onClick={() => setPillarSelector(null)}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl transition-colors font-bold cursor-pointer"
+                >
+                  Concluir
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
