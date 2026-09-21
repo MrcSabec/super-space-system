@@ -67,6 +67,30 @@ export interface PillarSelectorTarget {
   pillar: "satisfaction" | "economy" | "military";
 }
 
+export const PILLAR_LORE_DESCRIPTIONS: Record<string, Record<number, string>> = {
+  satisfaction: {
+    4: "Eufórico (Nível 4): População inspirada e extremamente leal. Máxima coesão social e estabilidade.",
+    3: "Satisfeito (Nível 3): Apoio popular sólido. Colônias altamente produtivas sem atritos civis.",
+    2: "Estável (Nível 2): Equilíbrio funcional. Cidadãos cooperam no padrão normal do sistema.",
+    1: "Insatisfeito (Nível 1): Murmúrios de descontentamento e atritos sociais perceptíveis.",
+    0: "Em Revolta (Nível 0): Revoltas civis generalizadas, greves massivas e risco iminente de motim.",
+  },
+  economy: {
+    4: "Abundante (Nível 4): Superávit vigoroso, infraestrutura impecável e comércio próspero.",
+    3: "Próspera (Nível 3): Cadeias de suprimento equilibradas, consumo estável e sem gargalos.",
+    2: "Suficiente (Nível 2): Recursos básicos atendidos estritamente, sem folgas para despesas supérfluas.",
+    1: "Escassa (Nível 1): Escassez de insumos, inflação de créditos e tensão nas linhas de suprimento.",
+    0: "Colapso (Nível 0): Desabastecimento catastrófico, paralisação industrial e crise aguda.",
+  },
+  military: {
+    4: "Insuperável (13+ Divs): Forças temidas, frotas em prontidão máxima e domínio incontestável.",
+    3: "Dominante (9-12 Divs): Defesas coordenadas, patrulhas ativas e resposta tática rápida.",
+    2: "Seguro (6-8 Divs): Contingente regular suficiente para manter a ordem e a defesa planetária.",
+    1: "Frágil (3-5 Divs): Contingente desfalcado, perdas materiais recentes e vulnerabilidade.",
+    0: "Indefeso (0-2 Divs): Ruína militar. Sem capacidade defensiva, território vulnerável.",
+  },
+};
+
 export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
   isOpen,
   onClose,
@@ -75,6 +99,7 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
   onUpdateCharacter,
   onOpenCharacteristicsModal,
 }) => {
+  const [viewMode, setViewMode] = useState<"priority_cards" | "table">("priority_cards");
   const [activePopover, setActivePopover] = useState<ActiveCellPopover>(null);
   const [pillarSelector, setPillarSelector] = useState<PillarSelectorTarget | null>(null);
   const [editingCreditsId, setEditingCreditsId] = useState<string | null>(null);
@@ -231,8 +256,46 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
           )}
         </div>
 
-        {/* Main Content Area: Responsive Data Grid */}
-        <div className="flex-1 overflow-y-auto p-2 sm:p-3 pb-36 custom-scrollbar">
+        {/* Navigation Tabs: Priority Pillars Panel (Default) vs Data Grid */}
+        <div className="px-4 sm:px-6 py-2.5 bg-[#090C12] border-b border-white/5 flex items-center justify-between gap-3 flex-wrap flex-shrink-0">
+          <div className="flex items-center gap-1.5 p-1 bg-black/60 border border-white/10 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setViewMode("priority_cards")}
+              className={`px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                viewMode === "priority_cards"
+                  ? "bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-lg shadow-amber-400/25 ring-1 ring-amber-300 font-extrabold"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Crown className="w-3.5 h-3.5" />
+              <span>Aba de Seleção Prioritária (Pilares & HP)</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-black/20 text-[9px] uppercase font-bold">
+                Padrão
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={`px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                viewMode === "table"
+                  ? "bg-sky-500/25 text-sky-200 border border-sky-400/40 shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Grade Consolidada (Tabela)</span>
+            </button>
+          </div>
+
+          <span className="text-[11px] font-mono text-slate-400 hidden lg:inline">
+            ✦ Dica: Na Aba Prioritária os botões de Satisfação, Economia e Poderio possuem espaçamento ampliado e feedback imediato.
+          </span>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-36 custom-scrollbar">
           {characters.length === 0 ? (
             <div className="p-16 text-center text-slate-400 font-mono text-xs space-y-2">
               <Users className="w-8 h-8 text-slate-600 mx-auto mb-2" />
@@ -240,6 +303,416 @@ export const PlayerPillarsModal: React.FC<PlayerPillarsModalProps> = ({
               <p className="text-[11px] text-slate-500">
                 Os impérios aparecerão automaticamente nesta grade assim que criarem seus personagens.
               </p>
+            </div>
+          ) : viewMode === "priority_cards" ? (
+            <div className="space-y-6 max-w-7xl mx-auto">
+              {characters.map((char) => {
+                const fac = getFaction(char.factionId);
+                const census = FACTION_INITIAL_CENSUS[char.factionId] || FACTION_INITIAL_CENSUS.federation;
+                const credits = char.galacticCredits ?? census.credits;
+                const pop = char.populationCount ?? census.population;
+                const satisfactionLvl = char.satisfaction ?? 2;
+                const satConfig = SATISFACTION_LEVELS[satisfactionLvl] || SATISFACTION_LEVELS[2];
+                const economyLvl = char.economy ?? 2;
+                const ecoConfig = ECONOMY_LEVELS[economyLvl] || ECONOMY_LEVELS[2];
+                const militaryLvl = char.military ?? 2;
+                const milConfig = MILITARY_LEVELS[militaryLvl] || MILITARY_LEVELS[2];
+                const points = char.characteristic_points ?? 2;
+                const initialMilitary = FACTION_INITIAL_MILITARY_TIERS[char.factionId] || FACTION_INITIAL_MILITARY_TIERS.neutral;
+                const totalDivs =
+                  (char.lightInfantry ?? initialMilitary.lightInfantry) +
+                  (char.heavyInfantry ?? initialMilitary.heavyInfantry) +
+                  (char.lightVehicles ?? initialMilitary.lightVehicles) +
+                  (char.heavyVehicles ?? initialMilitary.heavyVehicles) +
+                  (char.eliteUnits ?? initialMilitary.eliteUnits);
+
+                return (
+                  <div
+                    key={char.id}
+                    className="p-5 sm:p-6 rounded-3xl bg-[#090D17]/95 border border-white/10 hover:border-amber-400/40 transition-all shadow-2xl relative overflow-hidden group space-y-6"
+                    style={{
+                      boxShadow: `0 0 35px ${fac.color}0a`,
+                    }}
+                  >
+                    {/* Top Faction Stripe */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-1.5"
+                      style={{ backgroundColor: fac.color }}
+                    />
+
+                    {/* Empire Header */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/10">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm shadow-lg ring-2 ring-white/10 flex-shrink-0"
+                          style={{
+                            backgroundColor: `${fac.color}25`,
+                            color: fac.color,
+                            borderColor: `${fac.color}50`,
+                          }}
+                        >
+                          {fac.shortName.substring(0, 3)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base sm:text-lg font-bold text-slate-100 font-sans">
+                              {char.characterName}
+                            </h4>
+                            <span
+                              className="text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold uppercase"
+                              style={{
+                                backgroundColor: `${fac.color}15`,
+                                color: fac.color,
+                                borderColor: `${fac.color}40`,
+                              }}
+                            >
+                              {fac.name}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 font-mono">
+                            {char.leaderTitle} • <span className="text-slate-300">@{char.username}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Quick Resource Summary Counters */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+                        <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 flex items-center gap-1.5">
+                          <Coins className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Cofre: <strong>{credits.toLocaleString("pt-BR")} ¢</strong></span>
+                        </div>
+                        <div className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>População: <strong>{pop.toLocaleString("pt-BR")}</strong></span>
+                        </div>
+                        <div className="px-3.5 py-1.5 rounded-xl bg-sky-500/10 border border-sky-500/25 text-sky-300 flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5 text-sky-400" />
+                          <span>Poderio: <strong>{totalDivs} Divs</strong></span>
+                        </div>
+                        {onOpenCharacteristicsModal && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onOpenCharacteristicsModal();
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 flex items-center gap-1.5 transition-all cursor-pointer"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                            <span>Perks ({countUnlockedCharacteristics(char.unlocked_characteristics)})</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 3 Pillars Priority Blocks with Generous Padding */}
+                    <div className="space-y-4">
+                      {/* PILAR 1: SATISFAÇÃO */}
+                      <div className="p-4 rounded-2xl bg-black/45 border border-white/5 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-rose-400 animate-pulse" />
+                            <span className="text-xs font-mono uppercase tracking-wider font-bold text-slate-300">
+                              Pilar 1: Satisfação da População
+                            </span>
+                            <span
+                              className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg border shadow-sm"
+                              style={{
+                                backgroundColor: satConfig.bg,
+                                color: satConfig.color,
+                                borderColor: satConfig.border,
+                              }}
+                            >
+                              {satConfig.label} (Nível {satisfactionLvl})
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            {PILLAR_LORE_DESCRIPTIONS.satisfaction[satisfactionLvl]}
+                          </span>
+                        </div>
+
+                        {/* 5 Massive Padded Buttons */}
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                          {SATISFACTION_LEVELS.map((lvl) => {
+                            const isSelected = satisfactionLvl === lvl.level;
+                            return (
+                              <button
+                                key={lvl.level}
+                                type="button"
+                                onClick={async () => {
+                                  await updateCharacter(char.id, { satisfaction: lvl.level });
+                                  showToast(`${char.characterName}: Satisfação -> ${lvl.label}`);
+                                }}
+                                className={`py-3.5 px-4 rounded-2xl font-mono text-xs font-bold transition-all border flex items-center justify-between gap-2 shadow-sm cursor-pointer ${
+                                  isSelected
+                                    ? "ring-2 ring-white/40 scale-[1.02] shadow-lg font-extrabold"
+                                    : "bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300 hover:text-white hover:scale-[1.01]"
+                                }`}
+                                style={{
+                                  backgroundColor: isSelected ? `${lvl.color}25` : undefined,
+                                  borderColor: isSelected ? lvl.color : undefined,
+                                  color: isSelected ? lvl.color : undefined,
+                                }}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: lvl.color }}
+                                  />
+                                  <span className="truncate">{lvl.label}</span>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className="text-[10px] opacity-75 font-mono">({lvl.level})</span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* PILAR 2: ECONOMIA */}
+                      <div className="p-4 rounded-2xl bg-black/45 border border-white/5 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+                            <span className="text-xs font-mono uppercase tracking-wider font-bold text-slate-300">
+                              Pilar 2: Economia & Abastecimento
+                            </span>
+                            <span
+                              className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg border shadow-sm"
+                              style={{
+                                backgroundColor: ecoConfig.bg,
+                                color: ecoConfig.color,
+                                borderColor: ecoConfig.border,
+                              }}
+                            >
+                              {ecoConfig.label} (Nível {economyLvl})
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            {PILLAR_LORE_DESCRIPTIONS.economy[economyLvl]}
+                          </span>
+                        </div>
+
+                        {/* 5 Massive Padded Buttons */}
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                          {ECONOMY_LEVELS.map((lvl) => {
+                            const isSelected = economyLvl === lvl.level;
+                            return (
+                              <button
+                                key={lvl.level}
+                                type="button"
+                                onClick={async () => {
+                                  await updateCharacter(char.id, { economy: lvl.level });
+                                  showToast(`${char.characterName}: Economia -> ${lvl.label}`);
+                                }}
+                                className={`py-3.5 px-4 rounded-2xl font-mono text-xs font-bold transition-all border flex items-center justify-between gap-2 shadow-sm cursor-pointer ${
+                                  isSelected
+                                    ? "ring-2 ring-white/40 scale-[1.02] shadow-lg font-extrabold"
+                                    : "bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300 hover:text-white hover:scale-[1.01]"
+                                }`}
+                                style={{
+                                  backgroundColor: isSelected ? `${lvl.color}25` : undefined,
+                                  borderColor: isSelected ? lvl.color : undefined,
+                                  color: isSelected ? lvl.color : undefined,
+                                }}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: lvl.color }}
+                                  />
+                                  <span className="truncate">{lvl.label}</span>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className="text-[10px] opacity-75 font-mono">({lvl.level})</span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* PILAR 3: PODERIO MILITAR */}
+                      <div className="p-4 rounded-2xl bg-black/45 border border-white/5 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                            <span className="text-xs font-mono uppercase tracking-wider font-bold text-slate-300">
+                              Pilar 3: Poderio Militar (Defesa & Forças)
+                            </span>
+                            <span
+                              className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg border shadow-sm"
+                              style={{
+                                backgroundColor: milConfig.bg,
+                                color: milConfig.color,
+                                borderColor: milConfig.border,
+                              }}
+                            >
+                              {milConfig.label} (Nível {militaryLvl})
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            {PILLAR_LORE_DESCRIPTIONS.military[militaryLvl]}
+                          </span>
+                        </div>
+
+                        {/* 5 Massive Padded Buttons */}
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                          {MILITARY_LEVELS.map((lvl) => {
+                            const isSelected = militaryLvl === lvl.level;
+                            return (
+                              <button
+                                key={lvl.level}
+                                type="button"
+                                onClick={async () => {
+                                  await updateCharacter(char.id, { military: lvl.level });
+                                  showToast(`${char.characterName}: Poderio -> ${lvl.label}`);
+                                }}
+                                className={`py-3.5 px-4 rounded-2xl font-mono text-xs font-bold transition-all border flex items-center justify-between gap-2 shadow-sm cursor-pointer ${
+                                  isSelected
+                                    ? "ring-2 ring-white/40 scale-[1.02] shadow-lg font-extrabold"
+                                    : "bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300 hover:text-white hover:scale-[1.01]"
+                                }`}
+                                style={{
+                                  backgroundColor: isSelected ? `${lvl.color}25` : undefined,
+                                  borderColor: isSelected ? lvl.color : undefined,
+                                  color: isSelected ? lvl.color : undefined,
+                                }}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: lvl.color }}
+                                  />
+                                  <span className="truncate">{lvl.label}</span>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className="text-[10px] opacity-75 font-mono">(Nível {lvl.level})</span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Numerical Resources Steppers (Cofre, População, Conhecimento) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        {/* Cofre */}
+                        <div className="p-3.5 rounded-2xl bg-black/45 border border-white/5 flex items-center justify-between gap-3">
+                          <div>
+                            <span className="text-[10px] font-mono text-slate-400 block uppercase font-bold">Cofre Galáctico</span>
+                            <span className="text-sm font-bold text-amber-300 font-mono">
+                              {credits.toLocaleString("pt-BR")} ¢
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = Math.max(0, credits - 250);
+                                await updateCharacter(char.id, { galacticCredits: next });
+                                showToast(`${char.characterName}: Cofre -> ${next.toLocaleString("pt-BR")} ¢`);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center font-bold text-sm cursor-pointer"
+                              title="-250 ¢"
+                            >
+                              -
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = credits + 250;
+                                await updateCharacter(char.id, { galacticCredits: next });
+                                showToast(`${char.characterName}: Cofre -> ${next.toLocaleString("pt-BR")} ¢`);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center font-bold text-sm cursor-pointer"
+                              title="+250 ¢"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* População */}
+                        <div className="p-3.5 rounded-2xl bg-black/45 border border-white/5 flex items-center justify-between gap-3">
+                          <div>
+                            <span className="text-[10px] font-mono text-slate-400 block uppercase font-bold">Censo Demográfico</span>
+                            <span className="text-sm font-bold text-emerald-300 font-mono">
+                              {pop.toLocaleString("pt-BR")} hab.
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = Math.max(0, pop - 500);
+                                await updateCharacter(char.id, { populationCount: next });
+                                showToast(`${char.characterName}: População -> ${next.toLocaleString("pt-BR")}`);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center font-bold text-sm cursor-pointer"
+                              title="-500 hab."
+                            >
+                              -
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = pop + 500;
+                                await updateCharacter(char.id, { populationCount: next });
+                                showToast(`${char.characterName}: População -> ${next.toLocaleString("pt-BR")}`);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center font-bold text-sm cursor-pointer"
+                              title="+500 hab."
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Conhecimento */}
+                        <div className="p-3.5 rounded-2xl bg-black/45 border border-white/5 flex items-center justify-between gap-3">
+                          <div>
+                            <span className="text-[10px] font-mono text-slate-400 block uppercase font-bold">Pontos de Conhecimento</span>
+                            <span className="text-sm font-bold text-purple-300 font-mono">
+                              {points} Ptos ({countUnlockedCharacteristics(char.unlocked_characteristics)} perks)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = Math.max(0, points - 1);
+                                await updateCharacter(char.id, { characteristic_points: next });
+                                showToast(`${char.characterName}: Pontos -> ${next}`);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center font-bold text-sm cursor-pointer"
+                              title="-1 Ponto"
+                            >
+                              -
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const next = points + 1;
+                                await updateCharacter(char.id, { characteristic_points: next });
+                                showToast(`${char.characterName}: Pontos -> ${next}`);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center font-bold text-sm cursor-pointer"
+                              title="+1 Ponto"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="w-full border border-white/10 rounded-2xl bg-black/40 shadow-2xl">

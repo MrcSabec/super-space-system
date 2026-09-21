@@ -656,6 +656,13 @@ export async function saveMapTroops(campaignId: string, troops: Troop[]): Promis
         { troops: sanitized, updatedAt: now },
         { merge: true }
       );
+      try {
+        await setDoc(
+          doc(db, "campaigns", campaignId),
+          { mapState: { troops: sanitized, updatedAt: now } },
+          { merge: true }
+        );
+      } catch {}
       return;
     } catch (err) {
       console.warn("Firestore saveMapTroops error, saving locally:", err);
@@ -702,6 +709,13 @@ export async function saveMapPlanets(campaignId: string, planets: Planet[]): Pro
         { planets: sanitized, updatedAt: now },
         { merge: true }
       );
+      try {
+        await setDoc(
+          doc(db, "campaigns", campaignId),
+          { mapState: { planets: sanitized, updatedAt: now } },
+          { merge: true }
+        );
+      } catch {}
       return;
     } catch (err) {
       console.warn("Firestore saveMapPlanets error, saving locally:", err);

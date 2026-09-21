@@ -70,7 +70,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
   // Active Tool ("navigate" = pan map, "select" = select & move troops, "add_troop", "add_planet")
   const [activeTool, setActiveTool] = useState<MapTool>("select");
   const [selectedFactionForAdd, setSelectedFactionForAdd] = useState<FactionId>(
-    character?.factionId || "federation"
+    campaignFactions?.[0] || character?.factionId || "humanos"
   );
   const [showGrid, setShowGrid] = useState(true);
 
@@ -417,9 +417,7 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
         selectedTroopClass === "heavy_vehicle" ||
         (selectedTroopClass === "elite" && isAirspace);
 
-      const visibleToList = isGM
-        ? ["Todos", "all", "dm", "neutral", targetFactionId]
-        : Array.from(new Set(["all", "Todos", "dm", ownerId, targetFactionId]));
+      const visibleToList = ["Todos", "all", "dm", "neutral", targetFactionId, ownerId];
 
       const newTroop: Troop = {
         id: `trp_${Date.now()}_` + Math.random().toString(36).substring(2, 6),
@@ -959,51 +957,51 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
         if (troop.factionId === viewAs || troop.ownerId === viewAs) {
           return true;
         }
-        const list = (troop.visible_to || ["dm", troop.ownerId || "", troop.factionId]).map((v) =>
-          v.toString()
-        );
-        const hasMatch = list.some(
+        const list = (troop.visible_to && troop.visible_to.length > 0)
+          ? troop.visible_to.map((v) => v.toString().toLowerCase())
+          : ["todos", "all"];
+        return list.some(
           (v) =>
-            v.toLowerCase() === "todos" ||
-            v.toLowerCase() === "all" ||
-            v.toLowerCase() === viewAs.toLowerCase()
+            v === "todos" ||
+            v === "all" ||
+            v === viewAs.toLowerCase()
         );
-        return hasMatch;
       }
 
       // PLAYER Fog of War Filter
-      const troopOwner = ((troop as any).owner || troop.ownerId || "").toString();
-      const currentUserId = (currentUser?.id || "").toString();
-      const characterUserId = (character?.userId || "").toString();
+      const troopOwner = ((troop as any).owner || troop.ownerId || "").toString().toLowerCase();
+      const currentUserId = (currentUser?.id || "").toString().toLowerCase();
+      const characterUserId = (character?.userId || "").toString().toLowerCase();
       const currentUsername = (currentUser?.username || "").toString().toLowerCase();
+      const playerFaction = (character?.factionId || "").toString().toLowerCase();
+      const troopFaction = (troop.factionId || "").toString().toLowerCase();
 
-      // 1. Renderizar a tropa SE tropa.owner === jogadorAtual.id (ou username / character userId)
+      // 1. Own troop or same faction: ALWAYS VISIBLE
       if (
         (currentUserId && troopOwner === currentUserId) ||
         (characterUserId && troopOwner === characterUserId) ||
-        (currentUsername && troopOwner.toLowerCase() === currentUsername)
+        (currentUsername && troopOwner === currentUsername)
       ) {
         return true;
       }
+      if (playerFaction && troopFaction === playerFaction) {
+        return true;
+      }
 
-      // 2. tropa.visible_to.includes(jogadorAtual.id) OU tropa.visible_to.includes('Todos')
-      const list = (troop.visible_to || ["dm", troopOwner, troop.factionId]).map((v) =>
-        v.toString()
-      );
+      // 2. Default to PUBLIC if visible_to is omitted or empty
+      if (!troop.visible_to || troop.visible_to.length === 0) {
+        return true;
+      }
 
-      const hasEveryone = list.some(
-        (v) => v.toLowerCase() === "todos" || v.toLowerCase() === "all"
-      );
-      if (hasEveryone) return true;
+      const list = troop.visible_to.map((v) => v.toString().toLowerCase());
 
-      if (currentUserId && list.includes(currentUserId)) return true;
-      if (characterUserId && list.includes(characterUserId)) return true;
-      if (currentUsername && list.some((v) => v.toLowerCase() === currentUsername)) return true;
+      // 3. If explicitly marked hidden and not owner/faction:
+      if (list.includes("hidden") || list.includes("oculta")) {
+        return false;
+      }
 
-      // Also visible if visible to player's faction
-      if (character?.factionId && list.includes(character.factionId)) return true;
-
-      return false;
+      // 4. Default: Unless explicitly marked hidden, troops are visible on the tactical star map!
+      return true;
     },
     [isGM, viewAs, currentUser, character]
   );
@@ -1494,8 +1492,10 @@ export const StarMapCanvas: React.FC<StarMapCanvasProps> = ({
             const troopClass: TroopClass = troop.troopClass || "light_vehicle";
             const isSelected = selectedTroop?.id === troop.id;
             const isDraggingThis = draggingTroop?.id === troop.id;
-            const isConcealed = !(troop.visible_to || []).some(
-              (v) => v.toLowerCase() === "all" || v.toLowerCase() === "todos"
+            const isConcealed = Boolean(
+              troop.visible_to &&
+              troop.visible_to.length > 0 &&
+              troop.visible_to.some((v) => v.toLowerCase() === "hidden" || v.toLowerCase() === "oculta")
             );
             const payload = troop.payload || 0;
 

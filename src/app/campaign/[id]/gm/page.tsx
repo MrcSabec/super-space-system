@@ -27,6 +27,7 @@ import {
   Settings,
   Sparkles,
   AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -64,6 +65,15 @@ const GMMapContent: React.FC<GMMapContentProps> = ({
   const [isDiplomacyModalOpen, setIsDiplomacyModalOpen] = useState(false);
   const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const copyPlayerLink = () => {
+    if (!campaign || typeof window === "undefined") return;
+    const url = `${window.location.origin}/campaign/${campaign.id}/player`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
 
   const handleApply = async () => {
     try {
@@ -138,6 +148,27 @@ const GMMapContent: React.FC<GMMapContentProps> = ({
             <Users className="w-3.5 h-3.5 text-slate-500" />
             <span>{campaign.players?.length || 0} Jogadores</span>
           </div>
+
+          {/* Direct Copy Player URL on same origin for seamless live sync */}
+          <button
+            type="button"
+            onClick={copyPlayerLink}
+            title="Copiar Link direto da tela do Jogador neste mesmo domínio (para manter a sincronização perfeita em tempo real)"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 rounded-xl text-xs font-mono text-emerald-300 hover:text-white transition-all shadow-sm cursor-pointer"
+          >
+            {copiedLink ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="font-bold">Link Copiado!</span>
+              </>
+            ) : (
+              <>
+                <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Copiar Link do Jogador</span>
+                <span className="sm:hidden">Link</span>
+              </>
+            )}
+          </button>
 
           {/* Copyable Campaign Code Button */}
           <button

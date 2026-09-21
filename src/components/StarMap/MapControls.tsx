@@ -171,39 +171,33 @@ export const MapControls: React.FC<MapControlsProps> = ({
   const [showHelp, setShowHelp] = useState(false);
 
   const isRevealedToAll = (list?: string[]): boolean => {
-    if (!list) return false;
-    return list.some((item) => {
+    if (!list || list.length === 0) return true; // Default is revealed to all!
+    return !list.some((item) => {
       const s = String(item).toLowerCase();
-      return s === "all" || s === "todos";
+      return s === "hidden" || s === "oculta";
     });
   };
 
   // Handle Fog of War toggle for a specific faction or "all"
   const handleToggleVisibility = (target: "all" | FactionId) => {
     if (!selectedTroop || !onUpdateSelectedTroop) return;
-    const currentList = selectedTroop.visible_to || ["dm", selectedTroop.ownerId || "", selectedTroop.factionId];
+    const currentList = selectedTroop.visible_to && selectedTroop.visible_to.length > 0
+      ? selectedTroop.visible_to
+      : ["all", "Todos", "dm", selectedTroop.ownerId || "", selectedTroop.factionId];
 
     let nextList: string[];
     if (target === "all") {
       if (isRevealedToAll(currentList)) {
-        nextList = currentList.filter((item) => {
-          const s = String(item).toLowerCase();
-          return s !== "all" && s !== "todos";
-        });
-        if (!nextList.includes("dm")) nextList.push("dm");
-        if (selectedTroop.ownerId && !nextList.includes(selectedTroop.ownerId)) {
-          nextList.push(selectedTroop.ownerId);
-        }
+        // Conceal from other factions
+        nextList = ["dm", "hidden", selectedTroop.ownerId || "", selectedTroop.factionId];
       } else {
-        nextList = Array.from(new Set([...currentList, "all", "Todos"]));
+        // Reveal to everyone
+        nextList = ["all", "Todos", "dm", selectedTroop.ownerId || "", selectedTroop.factionId];
       }
     } else {
       if (currentList.includes(target)) {
         nextList = currentList.filter((item) => item !== target);
         if (!nextList.includes("dm")) nextList.push("dm");
-        if (selectedTroop.ownerId && !nextList.includes(selectedTroop.ownerId)) {
-          nextList.push(selectedTroop.ownerId);
-        }
       } else {
         nextList = Array.from(new Set([...currentList, target]));
       }
